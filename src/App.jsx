@@ -579,7 +579,7 @@ function PlannedDetail({user,p,onClose,onSave,onDelete,onFlash,onPhoto}){
   const[photo,setPhoto]=useState(null);
   const[busy,setBusy]=useState(false);
   const fileRef=useRef();
-  const mustPhoto=user.role==="manutentore";
+  const mustPhoto=false;
   const pickPhoto=async e=>{const fl=e.target.files?.[0];if(!fl)return;setBusy(true);try{setPhoto(await compress(fl));}catch{}setBusy(false);};
 
   const complete=()=>{
@@ -756,7 +756,7 @@ function Detail({user,it,tec,onClose,onPhoto,onSave,onDelete,onFlash}){
   const canReqT=(user.role==="manutentore"||(user.role==="direzione"||user.role==="reception"))&&active;
   const canOrdP=user.role==="manutentore"&&active;
   const pick=async e=>{const fl=e.target.files?.[0];if(!fl)return;setBusy(true);try{setPhoto(await compress(fl));}catch{}setBusy(false);};
-  const mustPhoto=user.role==="manutentore";
+  const mustPhoto=false;
   const complete=()=>{if(mustPhoto&&!photo){onFlash("Foto obbligatoria per confermare il lavoro",false);return;}onSave({...it,status:"done",photoAfter:photo,completedBy:user.name,completedAt:Date.now()});onClose();onFlash("Completato ✓");};
   const setWait=()=>{if(!piece.trim())return;onSave({...it,status:"waiting",pieceName:piece.trim(),waitingSince:Date.now(),waitingBy:user.name});onClose();onFlash("Pezzo segnalato ✓");};
   const pieceArr=()=>{onSave({...it,status:"todo",pieceArrivedAt:Date.now()});onClose();onFlash("Torna in Da fare ✓");};
