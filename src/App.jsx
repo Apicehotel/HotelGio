@@ -140,6 +140,16 @@ export default function App(){
   const[swipeDir,setSwipeDir]=useState(null);
 
   const flash=(m,ok=true)=>{ setToast({m,ok}); clearTimeout(toastRef.current); toastRef.current=setTimeout(()=>setToast(null),2500); };
+  const REPORT_URL="https://script.google.com/macros/s/AKfycbyQmNtdsN03jWice9r0FMKjEDNRmxTJo6HOUlf7c_ZmMy_NfMc3lyLNWQaUBPB9csI0Qw/exec";
+  const aggiornaReport=async()=>{
+    flash("Aggiornamento report in corso…");
+    try{
+      await fetch(REPORT_URL,{method:"GET",mode:"no-cors"});
+      setTimeout(()=>flash("Report aggiornato ✓"),1500);
+    }catch(err){
+      flash("Errore aggiornamento report",false);
+    }
+  };
   const refresh=useCallback(async()=>{
     const [its,plans,tecs]=await Promise.all([DB.loadItems(),DB.loadPlanned(),DB.loadTecnici()]);
     setItems(sortItems(its)); setPlanned(sortPlanned(plans)); setTec(tecs);
@@ -231,6 +241,7 @@ export default function App(){
     ...((user.role==="direzione"||user.role==="reception")?[
       {icon:I.download, label:"Esporta CSV",    fn:()=>{exportCSV(items);setMenuOpen(false);}, disabled:!items.length},
       {icon:I.book,     label:"Rubrica tecnici",fn:()=>{setSheet("tec");setMenuOpen(false);}},
+      {icon:I.refresh,  label:"Aggiorna report",fn:()=>{aggiornaReport();setMenuOpen(false);}},
     ]:[]),
   ];
 
