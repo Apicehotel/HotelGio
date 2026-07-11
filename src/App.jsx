@@ -237,7 +237,7 @@ export default function App(){
   const menuItems=[
     {icon:I.refresh,  label:"Aggiorna",        fn:()=>{refresh();setMenuOpen(false);}},
     ...(user.role!=="governante"?[{icon:I.msg,label:"Centro WhatsApp",fn:()=>{setSheet("wa");setMenuOpen(false);}}]:[]),
-    {icon:I.lock,     label:"Cambia PIN",       fn:()=>{setPinSheet(true);setMenuOpen(false);}},
+    {icon:I.lock,     label:"Cambia PIN",       fn:()=>{setPinSheet(true);setMenuOpen(false);}},{icon:I.book,label:"Manuale",fn:()=>{window.open("/manuale.pdf","_blank");setMenuOpen(false);}},
     ...((user.role==="direzione"||user.role==="reception")?[
       {icon:I.download, label:"Esporta CSV",    fn:()=>{exportCSV(items);setMenuOpen(false);}, disabled:!items.length},
       {icon:I.book,     label:"Rubrica tecnici",fn:()=>{setSheet("tec");setMenuOpen(false);}},
