@@ -117,7 +117,7 @@ function Sheet({onClose,title,children}){
   );
 }
 
-export default function App(){
+function ManualViewer({onClose}){const ref=useRef(null);useEffect(()=>{let cancelled=false;(async()=>{const lib=window.pdfjsLib;if(!lib||!ref.current)return;lib.GlobalWorkerOptions.workerSrc=window.PDFJS_WORKER_SRC;const pdf=await lib.getDocument("/manuale.pdf").promise;for(let n=1;n<=pdf.numPages;n++){if(cancelled)return;const page=await pdf.getPage(n);const vp0=page.getViewport({scale:1});const scale=(ref.current.clientWidth||360)/vp0.width;const viewport=page.getViewport({scale});const canvas=document.createElement("canvas");canvas.width=viewport.width;canvas.height=viewport.height;canvas.style.display="block";canvas.style.margin="0 auto 10px";canvas.style.maxWidth="100%";canvas.style.boxShadow="0 2px 10px rgba(0,0,0,.25)";ref.current.appendChild(canvas);await page.render({canvasContext:canvas.getContext("2d"),viewport}).promise;}})();return()=>{cancelled=true;};},[]);return(<div style={{position:"fixed",inset:0,zIndex:85,background:"#1B2420",overflowY:"auto"}}><button onClick={onClose} style={{position:"fixed",top:14,right:14,zIndex:2,background:"#fff",border:"none",color:"#1B2420",width:38,height:38,borderRadius:"50%",display:"grid",placeItems:"center",cursor:"pointer",boxShadow:"0 2px 10px rgba(0,0,0,.3)"}}>{I.x}</button><div ref={ref} style={{padding:"60px 10px 30px"}}/></div>);}export default function App(){
   const[user,setUser]=useState(()=>ST.get("ses"));
   const[items,setItems]=useState([]);
   const[planned,setPlanned]=useState([]);
@@ -419,7 +419,7 @@ export default function App(){
       {sheet?.pd&&<PlannedDetail user={user} p={planned.find(p=>p.id===sheet.pd.id)||sheet.pd} onClose={()=>setSheet(null)} onSave={savePlanned} onDelete={id=>{removePlanned(id);setSheet(null);flash("Eliminato",false);}} onFlash={flash} onPhoto={src=>setViewer(src)}/>}
       {myWorkOpen&&<MyWorkPage user={user} items={items} planned={planned} onClose={()=>setMyWorkOpen(false)} onOpen={(s)=>{setSheet(s);setMyWorkOpen(false);}}/> }
       {pinSheet&&<ChangePIN user={user} onClose={()=>setPinSheet(false)} onFlash={flash}/>}
-      {viewer&&<div onClick={()=>setViewer(null)} style={{position:"fixed",inset:0,zIndex:80,background:"rgba(0,0,0,.92)",display:"grid",placeItems:"center",padding:16,cursor:"pointer"}}><img src={viewer} alt="" style={{maxWidth:"100%",maxHeight:"90vh",borderRadius:10}}/></div>}      {manualOpen&&<div style={{position:"fixed",inset:0,zIndex:85,background:"#1B2420"}}><button onClick={()=>setManualOpen(false)} style={{position:"absolute",top:14,right:14,zIndex:2,background:"#fff",border:"none",color:"#1B2420",width:38,height:38,borderRadius:"50%",display:"grid",placeItems:"center",cursor:"pointer",boxShadow:"0 2px 10px rgba(0,0,0,.3)"}}>{I.x}</button><iframe src="/manuale.pdf" title="Manuale" style={{width:"100%",height:"100%",border:"none"}}/></div>}
+      {viewer&&<div onClick={()=>setViewer(null)} style={{position:"fixed",inset:0,zIndex:80,background:"rgba(0,0,0,.92)",display:"grid",placeItems:"center",padding:16,cursor:"pointer"}}><img src={viewer} alt="" style={{maxWidth:"100%",maxHeight:"90vh",borderRadius:10}}/></div>}      {manualOpen&&<ManualViewer onClose={()=>setManualOpen(false)}/>}
       {toast&&<div style={{position:"fixed",bottom:90,left:"50%",transform:"translateX(-50%)",background:"#1B2420",color:"#fff",padding:"11px 16px",borderRadius:11,fontSize:14,fontWeight:600,zIndex:90,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:8}}>{toast.ok?I.check:I.x} {toast.m}</div>}
     </div>
   );
