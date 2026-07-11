@@ -128,7 +128,7 @@ export default function App(){
   const[sheet,setSheet]=useState(null);
   const[viewer,setViewer]=useState(null);
   const[toast,setToast]=useState(null);
-  const[pinSheet,setPinSheet]=useState(false);
+  const[pinSheet,setPinSheet]=useState(false);const[manualOpen,setManualOpen]=useState(false);
   const[menuOpen,setMenuOpen]=useState(false);
   const[myWorkOpen,setMyWorkOpen]=useState(false);
   const toastRef=useRef();
@@ -237,7 +237,7 @@ export default function App(){
   const menuItems=[
     {icon:I.refresh,  label:"Aggiorna",        fn:()=>{refresh();setMenuOpen(false);}},
     ...(user.role!=="governante"?[{icon:I.msg,label:"Centro WhatsApp",fn:()=>{setSheet("wa");setMenuOpen(false);}}]:[]),
-    {icon:I.lock,     label:"Cambia PIN",       fn:()=>{setPinSheet(true);setMenuOpen(false);}},{icon:I.book,label:"Manuale",fn:()=>{const a=document.createElement("a");a.href="/manuale.pdf";a.download="Manuale Apice Manutenzioni.pdf";document.body.appendChild(a);a.click();a.remove();setMenuOpen(false);}},
+    {icon:I.lock,     label:"Cambia PIN",       fn:()=>{setPinSheet(true);setMenuOpen(false);}},{icon:I.book,label:"Manuale",fn:()=>{setManualOpen(true);setMenuOpen(false);}},
     ...((user.role==="direzione"||user.role==="reception")?[
       {icon:I.download, label:"Esporta CSV",    fn:()=>{exportCSV(items);setMenuOpen(false);}, disabled:!items.length},
       {icon:I.book,     label:"Rubrica tecnici",fn:()=>{setSheet("tec");setMenuOpen(false);}},
@@ -419,7 +419,7 @@ export default function App(){
       {sheet?.pd&&<PlannedDetail user={user} p={planned.find(p=>p.id===sheet.pd.id)||sheet.pd} onClose={()=>setSheet(null)} onSave={savePlanned} onDelete={id=>{removePlanned(id);setSheet(null);flash("Eliminato",false);}} onFlash={flash} onPhoto={src=>setViewer(src)}/>}
       {myWorkOpen&&<MyWorkPage user={user} items={items} planned={planned} onClose={()=>setMyWorkOpen(false)} onOpen={(s)=>{setSheet(s);setMyWorkOpen(false);}}/> }
       {pinSheet&&<ChangePIN user={user} onClose={()=>setPinSheet(false)} onFlash={flash}/>}
-      {viewer&&<div onClick={()=>setViewer(null)} style={{position:"fixed",inset:0,zIndex:80,background:"rgba(0,0,0,.92)",display:"grid",placeItems:"center",padding:16,cursor:"pointer"}}><img src={viewer} alt="" style={{maxWidth:"100%",maxHeight:"90vh",borderRadius:10}}/></div>}
+      {viewer&&<div onClick={()=>setViewer(null)} style={{position:"fixed",inset:0,zIndex:80,background:"rgba(0,0,0,.92)",display:"grid",placeItems:"center",padding:16,cursor:"pointer"}}><img src={viewer} alt="" style={{maxWidth:"100%",maxHeight:"90vh",borderRadius:10}}/></div>}      {manualOpen&&<div style={{position:"fixed",inset:0,zIndex:85,background:"#1B2420"}}><button onClick={()=>setManualOpen(false)} style={{position:"absolute",top:14,right:14,zIndex:2,background:"#fff",border:"none",color:"#1B2420",width:38,height:38,borderRadius:"50%",display:"grid",placeItems:"center",cursor:"pointer",boxShadow:"0 2px 10px rgba(0,0,0,.3)"}}>{I.x}</button><iframe src="/manuale.pdf" title="Manuale" style={{width:"100%",height:"100%",border:"none"}}/></div>}
       {toast&&<div style={{position:"fixed",bottom:90,left:"50%",transform:"translateX(-50%)",background:"#1B2420",color:"#fff",padding:"11px 16px",borderRadius:11,fontSize:14,fontWeight:600,zIndex:90,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:8}}>{toast.ok?I.check:I.x} {toast.m}</div>}
     </div>
   );
