@@ -418,15 +418,15 @@ function ManualViewer({onClose}){const ref=useRef(null);useEffect(()=>{let cance
       {sheet?.d&&<Detail user={user} it={items.find(i=>i.id===sheet.d.id)||sheet.d} tec={tec} onClose={()=>setSheet(null)} onPhoto={setViewer} onSave={saveItem} onDelete={id=>{removeItem(id);setSheet(null);flash("Eliminata",false);}} onFlash={flash}/>}
       {sheet?.pd&&<PlannedDetail user={user} p={planned.find(p=>p.id===sheet.pd.id)||sheet.pd} onClose={()=>setSheet(null)} onSave={savePlanned} onDelete={id=>{removePlanned(id);setSheet(null);flash("Eliminato",false);}} onFlash={flash} onPhoto={src=>setViewer(src)}/>}
       {myWorkOpen&&<MyWorkPage user={user} items={items} planned={planned} onClose={()=>setMyWorkOpen(false)} onOpen={(s)=>{setSheet(s);setMyWorkOpen(false);}}/> }
-      {pinSheet&&<ChangePIN user={user} onClose={()=>setPinSheet(false)} onFlash={flash}/>}
-      {viewer&&<div onClick={()=>setViewer(null)} style={{position:"fixed",inset:0,zIndex:80,background:"rgba(0,0,0,.92)",display:"grid",placeItems:"center",padding:16,cursor:"pointer"}}><img src={viewer} alt="" style={{maxWidth:"100%",maxHeight:"90vh",borderRadius:10}}/></div>}      {manualOpen&&<ManualViewer onClose={()=>setManualOpen(false)}/>}
+      {pinSheet&&<ChangePIN user={user} onClose={()=>setPinSheet(false)} onFlash={flash}/>} {viewer&&<div onClick={()=>setViewer(null)} style={{position:"fixed",inset:0,zIndex:80,background:"rgba(0,0,0,.92)",display:"grid",placeItems:"center",padding:16,cursor:"pointer"}}><img src={viewer} alt="" style={{maxWidth:"100%",maxHeight:"90vh",borderRadius:10}}/></div>} {manualOpen&&<ManualViewer onClose={()=>setManualOpen(false)}/>}
+      
       {toast&&<div style={{position:"fixed",bottom:90,left:"50%",transform:"translateX(-50%)",background:"#1B2420",color:"#fff",padding:"11px 16px",borderRadius:11,fontSize:14,fontWeight:600,zIndex:90,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:8}}>{toast.ok?I.check:I.x} {toast.m}</div>}
     </div>
   );
 }
 
 // ── Card segnalazione ─────────────────────────────────────────────────────────
-function Card({it,onOpen,onPhoto}){
+function isRoomNumber(camera){return /^\d{3,4}$/.test(String(camera||"").trim());} function Card({it,onOpen,onPhoto}){
   const u=URG[it.urgency]||URG.media;
   const st={todo:{l:"Da fare",bg:"#F1E4CC",fg:"#7a5212"},done:{l:"Completata",bg:"#E6F2EB",fg:"#2E7D5B"},waiting:{l:"Attesa pezzo",bg:"#EDE9FE",fg:"#7C3AED"},tecnico:{l:"Tecnico",bg:"#FEF3C7",fg:"#92400E"}}[it.status]||{l:"Da fare",bg:"#F1E4CC",fg:"#7a5212"};
   return(
@@ -435,7 +435,7 @@ function Card({it,onOpen,onPhoto}){
       <div style={{padding:"12px 14px",flex:1}}>
         <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
           <div style={{width:52,height:52,borderRadius:11,background:"#FBFAF7",border:"1px solid #E4E0D6",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-            <div style={{fontSize:7,color:"#B9842F",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>Cam.</div>
+            <div style={{fontSize:7,color:"#B9842F",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>{isRoomNumber(it.room)?"Cam.":"Zona"}</div>
             <div style={{fontSize:18,fontWeight:800,lineHeight:1}}>{it.room}</div>
           </div>
           <div style={{flex:1,minWidth:0}}>
@@ -473,7 +473,7 @@ function PlannedCard({p,user,onOpen}){
       <div style={{padding:"12px 14px",flex:1}}>
         <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
           <div style={{width:52,height:52,borderRadius:11,background:done?"#E6F2EB":"#EFF6FF",border:"1px solid "+(done?"#bfe2cf":"#BFDBFE"),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-            <div style={{fontSize:7,color:done?"#2E7D5B":"#1D4ED8",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>Cam.</div>
+            <div style={{fontSize:7,color:done?"#2E7D5B":"#1D4ED8",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>{isRoomNumber(p.room)?"Cam.":"Zona"}</div>
             <div style={{fontSize:18,fontWeight:800,lineHeight:1,color:done?"#2E7D5B":"#1D4ED8"}}>{p.room}</div>
           </div>
           <div style={{flex:1,minWidth:0}}>
