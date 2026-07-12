@@ -267,8 +267,8 @@ function ManualViewer({onClose}){const ref=useRef(null);useEffect(()=>{let cance
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             {I.hotel}
             <div>
-              <div style={{fontWeight:800,fontSize:15}}>Manutenzione Apicehotel</div>
-              <div style={{fontSize:10,opacity:.75,letterSpacing:.8,textTransform:"uppercase"}}>Hotel Jazz &amp; Wine</div>
+              <div style={{fontWeight:800,fontSize:15}}>Manutenzioni - Hotel Jazz & Wine</div>
+              <div style={{fontSize:10,opacity:.75,letterSpacing:.8,textTransform:"uppercase"}}>Apicehotel</div>
             </div>
           </div>
           <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
@@ -891,7 +891,7 @@ function Login({onLogin}){
           <img src={HOTEL_LOGO} alt="Hotel Giò" style={{width:120,borderRadius:14,boxShadow:"0 8px 24px -8px rgba(0,0,0,.25)"}}/>
         </div>
         <div style={{textAlign:"center",marginBottom:24}}>
-          <div style={{fontWeight:800,fontSize:17}}>Manutenzione Apicehotel</div>
+          <div style={{fontWeight:800,fontSize:17}}>Manutenzioni - Hotel Jazz & Wine</div>
         </div>
         <div style={{marginBottom:6,position:"relative"}}>
           <input style={inputSt} placeholder="Il tuo nome" value={name} onChange={e=>onName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&name.trim()&&goPin()} autoFocus/>
