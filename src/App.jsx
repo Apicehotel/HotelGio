@@ -59,7 +59,7 @@ const ROLES = {
   direzione:   { label:"Direzione",   desc:"Supervisione e statistiche", icon:"shield" },
   governante:  { label:"Governante",  desc:"Segnala dalle camere",       icon:"list"   },
   manutentore: { label:"Manutentore", desc:"Esegue gli interventi",      icon:"wrench" },
-  reception:   { label:"Reception",   desc:"Segnala dal ricevimento",    icon:"bell"   },
+  reception:   { label:"Reception",   desc:"Segnala dal ricevimento",    icon:"bell"   }, responsabile_area:{label:"Responsabile Area",desc:"Segnala per la propria zona",icon:"list"},
 };
 const DEF_TEC = [{ id:"t1", nome:"Pecetti", telefono:"3341196935" }, { id:"t2", nome:"Ciuffini", telefono:"3341196935" }, { id:"t3", nome:"AIT", telefono:"3341196935" }];
 const DEF_USERS = [
@@ -159,7 +159,7 @@ function ManualViewer({onClose}){const ref=useRef(null);useEffect(()=>{let cance
   const savePlanned=async p=>{ setPlanned(prev=>sortPlanned([...prev.filter(i=>i.id!==p.id),p])); await DB.savePlanned(p); refresh(); };
   const removePlanned=async id=>{ setPlanned(prev=>prev.filter(i=>i.id!==id)); await DB.deletePlanned(id); refresh(); };
   const saveTec=async l=>{ setTec(l); await DB.saveTecnici(l); refresh(); };
-  const login=(role,name)=>{ const u={role,name:name.trim()}; setUser(u); ST.set("ses",u); };
+  const login=(role,name)=>{ const u={role,name:name.trim()}; setUser(u); ST.set("ses",u); }; const[allUsers,setAllUsers]=useState([]); useEffect(()=>{ DB.loadUsers().then(u=>setAllUsers(u)); },[]); const myZones=(allUsers.find(u=>u.name===user?.name)?.zones)||[];
   const logout=()=>{ setUser(null); ST.del("ses"); };
 
   const switchTab=t=>{setTab(t);setSearch("");};
@@ -228,7 +228,7 @@ function ManualViewer({onClose}){const ref=useRef(null);useEffect(()=>{let cance
   };
   const fil=items.filter(i=>{
     const matchFilter=filter==="aperte"?i.status==="todo":filter==="att"?i.status==="waiting":filter==="tec"?i.status==="tecnico":filter==="fatte"?i.status==="done":true;
-    if(!matchFilter)return false;
+    if(!matchFilter)return false; if(myZones.length&&!myZones.some(z=>String(i.room).trim().toLowerCase()===z.trim().toLowerCase()))return false;
     if(!search.trim())return true;
     const q=search.toLowerCase();
     return String(i.room).toLowerCase().includes(q)||(i.notes||"").toLowerCase().includes(q)||(i.createdBy||"").toLowerCase().includes(q);
@@ -411,7 +411,7 @@ function ManualViewer({onClose}){const ref=useRef(null);useEffect(()=>{let cance
         {I.plus} {tab==="segnalazioni"?"Nuova segnalazione":"Nuovo intervento"}
       </button>
 
-      {sheet==="new"&&<NewForm user={user} onClose={()=>setSheet(null)} onSave={m=>{saveItem(m);setSheet(null);flash("Segnalazione inviata");}}/>}
+      {sheet==="new"&&<NewForm user={user} zones={myZones} onClose={()=>setSheet(null)} onSave={m=>{saveItem(m);setSheet(null);flash("Segnalazione inviata");}}/>}
       {sheet==="newplan"&&(user.role==="direzione"||user.role==="reception")&&<NewPlanned user={user} tec={tec} onClose={()=>setSheet(null)} onSave={p=>{savePlanned(p);setSheet(null);flash("Intervento pianificato ✓");}}/>}
       {sheet==="wa"&&<WACenter user={user} items={items} onSave={saveItem} onClose={()=>setSheet(null)}/>}
       {sheet==="tec"&&<Tecnici tec={tec} onSave={saveTec} onClose={()=>setSheet(null)}/>}
@@ -713,15 +713,15 @@ function PlannedDetail({user,p,onClose,onSave,onDelete,onFlash,onPhoto}){
 }
 
 // ── NewForm segnalazione ──────────────────────────────────────────────────────
-function NewForm({user,onClose,onSave}){
+function NewForm({user,onClose,onSave,zones}){
   const[room,setRoom]=useState("");const[urg,setUrg]=useState("media");const[cat,setCat]=useState("varie");const[notes,setNotes]=useState("");const[photo,setPhoto]=useState(null);const[busy,setBusy]=useState(false);
   const[roomStatus,setRoomStatus]=useState(null);
-  const canSetRoomStatus=user.role!=="manutentore";
+  const canSetRoomStatus=user.role!=="manutentore"; useEffect(()=>{ if(zones&&zones.length===1&&!room) setRoom(zones[0]); },[]);
   const f=useRef();
   const pick=async e=>{const fl=e.target.files?.[0];if(!fl)return;setBusy(true);try{setPhoto(await compress(fl));}catch{}setBusy(false);};
   return(
     <Sheet onClose={onClose} title="Nuova segnalazione">
-      <Field label="Numero camera"><input style={inputSt} inputMode="text" placeholder="es. 214, oppure Jazz, Wine, Ristorante Wine, Colazioni, Hall Wine, Hall Jazz, Office Wine, Office Jazz" value={room} onChange={e=>setRoom(e.target.value)} autoFocus/></Field>
+      <Field label="Numero camera">{zones&&zones.length===1?<input style={inputSt} value={zones[0]} disabled/>:zones&&zones.length>1?<div style={{display:"flex",gap:7,flexWrap:"wrap"}}>{zones.map(z=><button key={z} type="button" onClick={()=>setRoom(z)} style={{padding:"8px 14px",borderRadius:8,border:"1px solid #E4E0D6",background:room===z?"#1B2420":"#fff",color:room===z?"#fff":"#1B2420",fontWeight:600}}>{z}</button>)}</div>:<input style={inputSt} inputMode="text" placeholder="es. 214, oppure Jazz, Wine, Ristorante Wine, Colazioni, Hall Wine, Hall Jazz, Office Wine, Office Jazz, Risto Wine, Risto Jazz, Sala Colazioni" value={room} onChange={e=>setRoom(e.target.value)} autoFocus/>}</Field>
       {canSetRoomStatus&&<Field label="Stato camera">
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
           {Object.entries(ROOM_ST).map(([k,v])=><button key={k} onClick={()=>setRoomStatus(roomStatus===k?null:k)} style={{padding:"10px 8px",borderRadius:11,border:"1.5px solid "+(roomStatus===k?v.fg:"#E4E0D6"),background:roomStatus===k?v.bg:"#fff",color:roomStatus===k?v.fg:"#5C645E",fontWeight:700,fontSize:12.5,cursor:"pointer"}}>{v.label}</button>)}
@@ -783,7 +783,7 @@ function Detail({user,it,tec,onClose,onPhoto,onSave,onDelete,onFlash}){
   const savePieceDecision=(ans)=>{onSave({...it,pieceDecision:ans,pieceDecisionBy:user.name,pieceDecisionAt:Date.now()});onFlash(ans==="ritiro"?"Vai a ritirarlo 🚗":"Verrà ordinato 📦");};
   return(
     <Sheet onClose={onClose} title={"Camera "+it.room}>
-      {((user.role==="direzione"||user.role==="reception")||(user.role==="governante"&&it.createdBy===user.name))&&<button onClick={()=>{if(confirm("Eliminare?"))onDelete(it.id);}} style={{display:"flex",alignItems:"center",gap:6,marginLeft:"auto",marginBottom:8,background:"#FBE9E6",border:"none",color:"#B23A2E",padding:"6px 12px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"}}>{I.trash} Elimina</button>}
+      {((user.role==="direzione"||user.role==="reception")||(user.role==="governante"&&it.createdBy===user.name)||(user.role==="responsabile_area"&&it.createdBy===user.name))&&<button onClick={()=>{if(confirm("Eliminare?"))onDelete(it.id);}} style={{display:"flex",alignItems:"center",gap:6,marginLeft:"auto",marginBottom:8,background:"#FBE9E6",border:"none",color:"#B23A2E",padding:"6px 12px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"}}>{I.trash} Elimina</button>}
       {blk(null,null,<>{dlbl("Problema segnalato")}{it.roomStatus&&ROOM_ST[it.roomStatus]&&<span style={{display:"inline-block",fontSize:12,fontWeight:700,padding:"3px 10px",borderRadius:999,background:ROOM_ST[it.roomStatus].bg,color:ROOM_ST[it.roomStatus].fg,marginBottom:8}}>{ROOM_ST[it.roomStatus].label}</span>}<div style={{fontSize:14,lineHeight:1.45,marginBottom:8}}>{it.notes||"—"}</div><div style={{fontSize:11,color:"#5C645E"}}>Da {it.createdBy} · {fmt(it.createdAt)}</div>{it.photoBefore&&<div style={{marginTop:10,display:"inline-flex",flexDirection:"column",alignItems:"flex-start"}}><img src={it.photoBefore} alt="" onClick={()=>onPhoto(it.photoBefore)} style={{width:110,height:110,objectFit:"cover",borderRadius:10,border:"1px solid #E4E0D6",display:"block",cursor:"pointer"}}/><span style={{fontSize:10,color:"#5C645E",marginTop:4}}>Tocca per ingrandire</span></div>}</>)}
       {needT&&blk("#FFFBEB","#FCD34D",<>{dlbl("Tecnico richiesto","#92400E")}<div style={{fontSize:15,fontWeight:700,color:"#78350F",marginBottom:6,display:"flex",alignItems:"center",gap:6}}>{I.phone} {it.tecnicoNome}</div><div style={{fontSize:11,color:"#92400E",marginBottom:10}}>Da {it.tecnicoRequestedBy} · {fmt(it.tecnicoRequestedAt)}</div>{calledBy?<><div style={{background:"#fff",border:"1px solid #FCD34D",borderRadius:9,padding:"9px 12px",fontSize:13,color:"#92400E",marginBottom:8,display:"flex",alignItems:"center",gap:6}}>{I.check} Chiamato da <strong>{calledBy}</strong> · {fmt(calledAt)}</div>{canCall&&<button onClick={techDone} style={{...ctaSt,background:"#2E7D5B"}}>{I.check} Intervento completato</button>}</>:canCall&&<div style={{display:"flex",flexDirection:"column",gap:7}}>{it.photoBefore&&<button onClick={()=>onPhoto(it.photoBefore)} style={{...ctaSt,background:"#fff",color:"#92400E",border:"1.5px solid #FCD34D",fontSize:13,padding:"10px 6px"}}>{I.image} Apri foto (tieni premuto per salvarla)</button>}<div style={{display:"flex",gap:7}}>{waLink&&<a href={waLink} target="_blank" rel="noopener noreferrer" style={{flex:1,background:"#25D366",color:"#fff",fontWeight:700,fontSize:14,padding:14,borderRadius:12,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,textDecoration:"none"}}><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 6.32A7.85 7.85 0 0 0 12.05 4a7.94 7.94 0 0 0-6.9 11.9L4 20l4.21-1.1a7.93 7.93 0 0 0 3.8.97h0a7.95 7.95 0 0 0 5.59-13.55zm-5.55 12.2h0a6.6 6.6 0 0 1-3.36-.92l-.24-.14-2.5.65.67-2.44-.16-.25a6.6 6.6 0 1 1 12.27-3.5 6.56 6.56 0 0 1-6.68 6.6zm3.6-4.93c-.2-.1-1.17-.58-1.35-.64s-.31-.1-.45.1-.52.64-.64.78-.23.15-.43.05a5.42 5.42 0 0 1-1.6-.98 5.99 5.99 0 0 1-1.1-1.37c-.12-.2 0-.3.09-.4s.2-.23.3-.35a1.4 1.4 0 0 0 .2-.33.36.36 0 0 0 0-.35c0-.1-.45-1.08-.62-1.48s-.33-.33-.45-.33-.25 0-.38 0a.74.74 0 0 0-.53.25 2.23 2.23 0 0 0-.7 1.66 3.88 3.88 0 0 0 .82 2.05 8.86 8.86 0 0 0 3.39 3 11.5 11.5 0 0 0 1.13.42 2.7 2.7 0 0 0 1.25.08 2.04 2.04 0 0 0 1.34-.94 1.65 1.65 0 0 0 .12-.94c-.05-.1-.18-.15-.39-.25z"/></svg> Apri chat</a>}<button onClick={markCalled} style={{...ctaSt,background:"#D97706",flex:1}}>{I.phone} Ho chiamato</button></div></div>}{!canCall&&!calledBy&&<div style={{fontSize:13,color:"#92400E"}}>In attesa che direzione/reception chiami {it.tecnicoNome}.</div>}</>)}
       {wait&&blk("#EDE9FE18","#C4B5FD",<>{dlbl("In attesa del pezzo","#7C3AED")}<div style={{fontSize:15,fontWeight:700,marginBottom:4}}>{it.pieceName}</div><div style={{fontSize:11,color:"#5C645E",marginBottom:10}}>Da {it.waitingBy} · {fmt(it.waitingSince)}</div>{it.pieceDecision?<div style={{background:"#fff",border:"1px solid #C4B5FD",borderRadius:9,padding:"8px 11px",fontSize:13,color:"#7C3AED",marginBottom:8,display:"flex",alignItems:"center",gap:6}}>{I.pkg} <strong>{it.pieceDecisionBy}</strong> {it.pieceDecision==="ritiro"?"andrà a ritirarlo":"lo ordinerà"}</div>:canMW&&<div style={{display:"flex",gap:8,marginBottom:8}}><button onClick={()=>savePieceDecision("ritiro")} style={{flex:1,background:"#7C3AED",color:"#fff",fontWeight:700,fontSize:13,padding:"10px 6px",borderRadius:10,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>🚗 Vado a prenderlo</button><button onClick={()=>savePieceDecision("ordine")} style={{flex:1,background:"#fff",color:"#7C3AED",fontWeight:700,fontSize:13,padding:"10px 6px",borderRadius:10,border:"1.5px solid #C4B5FD",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>{I.pkg} Lo ordino</button></div>}{canMW&&<button onClick={pieceArr} style={{...ctaSt,background:"#7C3AED"}}>{I.pkg} Pezzo arrivato → Da fare</button>}</>)}
