@@ -325,7 +325,7 @@ function ManualViewer({onClose}){const ref=useRef(null);useEffect(()=>{let cance
 
       {/* ===== TAB: SEGNALAZIONI ===== */}
       {tab==="segnalazioni"&&(
-        <main ref={swipeRef} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{maxWidth:760,margin:"0 auto",padding:"0 16px 100px",transition:swipeDir?"transform 0.15s ease":"none",transform:swipeDir==="left"?"translateX(-8px)":swipeDir==="right"?"translateX(8px)":"none"}}>
+        <main ref={swipeRef} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{maxWidth:760,margin:"0 auto",padding:"0 16px 100px"}}>
           {(user.role==="direzione"||user.role==="reception")&&(
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginTop:14,marginBottom:4}}>
               {[["Da fare",cnt.todo,"#B9842F"],["Urgenti",cnt.alta,"#B23A2E"],["Fatte",cnt.done,"#2E7D5B"]].map(([k,n,c])=>(
