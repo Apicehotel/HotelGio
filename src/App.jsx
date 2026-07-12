@@ -542,7 +542,7 @@ function NewPlanned({user,tec,onClose,onSave}){
   return(
     <Sheet onClose={onClose} title="Nuovo intervento pianificato">
       <Field label="Numero camera *">
-        <input style={inputSt} inputMode="numeric" placeholder="es. 214" value={room} onChange={e=>setRoom(e.target.value)} autoFocus/>
+        <input style={inputSt} inputMode="text" placeholder="es. 214, oppure Jazz, Wine, Ristorante Wine, Colazioni, Hall Wine, Hall Jazz, Office Wine, Office Jazz" value={room} onChange={e=>setRoom(e.target.value)} autoFocus/>
       </Field>
       <Field label="Categoria *">
         <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
@@ -721,7 +721,7 @@ function NewForm({user,onClose,onSave}){
   const pick=async e=>{const fl=e.target.files?.[0];if(!fl)return;setBusy(true);try{setPhoto(await compress(fl));}catch{}setBusy(false);};
   return(
     <Sheet onClose={onClose} title="Nuova segnalazione">
-      <Field label="Numero camera"><input style={inputSt} inputMode="numeric" placeholder="es. 214" value={room} onChange={e=>setRoom(e.target.value)} autoFocus/></Field>
+      <Field label="Numero camera"><input style={inputSt} inputMode="text" placeholder="es. 214, oppure Jazz, Wine, Ristorante Wine, Colazioni, Hall Wine, Hall Jazz, Office Wine, Office Jazz" value={room} onChange={e=>setRoom(e.target.value)} autoFocus/></Field>
       {canSetRoomStatus&&<Field label="Stato camera">
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
           {Object.entries(ROOM_ST).map(([k,v])=><button key={k} onClick={()=>setRoomStatus(roomStatus===k?null:k)} style={{padding:"10px 8px",borderRadius:11,border:"1.5px solid "+(roomStatus===k?v.fg:"#E4E0D6"),background:roomStatus===k?v.bg:"#fff",color:roomStatus===k?v.fg:"#5C645E",fontWeight:700,fontSize:12.5,cursor:"pointer"}}>{v.label}</button>)}
