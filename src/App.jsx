@@ -436,7 +436,7 @@ function isRoomNumber(camera){return /^\d{3,4}$/.test(String(camera||"").trim())
         <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
           <div style={{width:52,height:52,borderRadius:11,background:"#FBFAF7",border:"1px solid #E4E0D6",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0}}>
             <div style={{fontSize:7,color:"#B9842F",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>{isRoomNumber(it.room)?"Cam.":"Zona"}</div>
-            <div style={{fontSize:18,fontWeight:800,lineHeight:1}}>{it.room}</div>
+            <div style={{fontSize:18,fontWeight:800,lineHeight:1,textAlign:"center"}}>{it.room}</div>
           </div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:4}}>
@@ -474,7 +474,7 @@ function PlannedCard({p,user,onOpen}){
         <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
           <div style={{width:52,height:52,borderRadius:11,background:done?"#E6F2EB":"#EFF6FF",border:"1px solid "+(done?"#bfe2cf":"#BFDBFE"),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0}}>
             <div style={{fontSize:7,color:done?"#2E7D5B":"#1D4ED8",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>{isRoomNumber(p.room)?"Cam.":"Zona"}</div>
-            <div style={{fontSize:18,fontWeight:800,lineHeight:1,color:done?"#2E7D5B":"#1D4ED8"}}>{p.room}</div>
+            <div style={{fontSize:18,fontWeight:800,lineHeight:1,color:done?"#2E7D5B":"#1D4ED8",textAlign:"center"}}>{p.room}</div>
           </div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:4,alignItems:"center"}}>
