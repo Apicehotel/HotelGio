@@ -148,13 +148,13 @@ export const DB = {
   async loadUsers(){
     const { data, error } = await supabase.from("utenti").select("*");
     if(error){ console.error(error); return []; }
-    return data.map(u=>({ id:u.id, name:u.nome, role:u.ruolo, pin:u.pin }));
+    return data.map(u=>({ id:u.id, name:u.nome, role:u.ruolo, pin:u.pin, zones:u.zone_consentite||[] }));
   },
   async saveUsers(users){
     // Sostituzione completa: cancella e reinserisce
     await supabase.from("utenti").delete().neq("id","00000000-0000-0000-0000-000000000000");
     if(users.length){
-      const rows = users.map(u=>({ nome:u.name, ruolo:u.role, pin:u.pin }));
+      const rows = users.map(u=>({ nome:u.name, ruolo:u.role, pin:u.pin, zone_consentite:u.zones||null }));
       const { error } = await supabase.from("utenti").insert(rows);
       if(error) console.error(error);
     }
