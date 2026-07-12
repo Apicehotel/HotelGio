@@ -418,7 +418,7 @@ function ManualViewer({onClose}){const ref=useRef(null);useEffect(()=>{let cance
       {sheet?.d&&<Detail user={user} it={items.find(i=>i.id===sheet.d.id)||sheet.d} tec={tec} onClose={()=>setSheet(null)} onPhoto={setViewer} onSave={saveItem} onDelete={id=>{removeItem(id);setSheet(null);flash("Eliminata",false);}} onFlash={flash}/>}
       {sheet?.pd&&<PlannedDetail user={user} p={planned.find(p=>p.id===sheet.pd.id)||sheet.pd} onClose={()=>setSheet(null)} onSave={savePlanned} onDelete={id=>{removePlanned(id);setSheet(null);flash("Eliminato",false);}} onFlash={flash} onPhoto={src=>setViewer(src)}/>}
       {myWorkOpen&&<MyWorkPage user={user} items={items} planned={planned} onClose={()=>setMyWorkOpen(false)} onOpen={(s)=>{setSheet(s);setMyWorkOpen(false);}}/> }
-      {pinSheet&&<ChangePIN user={user} onClose={()=>setPinSheet(false)} onFlash={flash}/>}
+      {pinSheet&&<ChangePIN user={user} onClose={()=>setPinSheet(false)} onFlash={flash}/>} {viewer&&<div onClick={()=>setViewer(null)} style={{position:"fixed",inset:0,zIndex:80,background:"rgba(0,0,0,.92)",display:"grid",placeItems:"center",padding:16,cursor:"pointer"}}><img src={viewer} alt="" style={{maxWidth:"100%",maxHeight:"90vh",borderRadius:10}}/></div>} {manualOpen&&<ManualViewer onClose={()=>setManualOpen(false)}/>}
       
       {toast&&<div style={{position:"fixed",bottom:90,left:"50%",transform:"translateX(-50%)",background:"#1B2420",color:"#fff",padding:"11px 16px",borderRadius:11,fontSize:14,fontWeight:600,zIndex:90,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:8}}>{toast.ok?I.check:I.x} {toast.m}</div>}
     </div>
