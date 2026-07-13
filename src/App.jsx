@@ -65,6 +65,7 @@ const ROLES = {
   manutentore: { label:"Manutentore", desc:"Esegue gli interventi",      icon:"wrench" },
   reception:   { label:"Reception",   desc:"Segnala dal ricevimento",    icon:"bell"   }, responsabile_area:{label:"Responsabile Area",desc:"Segnala per la propria zona",icon:"list"},
 };
+function roleDisplayFor(role,zones){ if(role!=="responsabile_area") return {label:ROLES[role]?.label,icon:ROLES[role]?.icon}; const zz=(zones||[]).map(z=>String(z).toLowerCase()); if(zz.some(z=>z.includes("risto"))) return {label:"Ristorante",icon:"wine"}; if(zz.some(z=>z.includes("colazioni"))) return {label:"Colazioni",icon:"coffee"}; return {label:"Responsabile Area",icon:"list"}; }
 const DEF_TEC = [{ id:"t1", nome:"Pecetti", telefono:"3341196935" }, { id:"t2", nome:"Ciuffini", telefono:"3341196935" }, { id:"t3", nome:"AIT", telefono:"3341196935" }];
 const DEF_USERS = [
   { id:"d1", name:"Alberto",  role:"direzione",   pin:"0000" },
@@ -433,7 +434,7 @@ function ManualViewer({onClose}){const ref=useRef(null);useEffect(()=>{let cance
 }
 
 // ── Card segnalazione ─────────────────────────────────────────────────────────
-function isRoomNumber(camera){return /^\d{3,4}$/.test(String(camera||"").trim());} function zoneFontSize(v){const n=String(v||"").length;if(n>13)return 10;if(n>10)return 13;return 18;} function Card({it,onOpen,onPhoto}){
+function isRoomNumber(camera){return /^\d{3,4}$/.test(String(camera||"").trim());} function zoneFontSize(v){const n=String(v||"").length;if(n>13)return 8;if(n>10)return 13;return 18;} function Card({it,onOpen,onPhoto}){
   const u=URG[it.urgency]||URG.media;
   const st={todo:{l:"Da fare",bg:"#F1E4CC",fg:"#7a5212"},done:{l:"Completata",bg:"#E6F2EB",fg:"#2E7D5B"},waiting:{l:"Attesa pezzo",bg:"#EDE9FE",fg:"#7C3AED"},tecnico:{l:"Tecnico",bg:"#FEF3C7",fg:"#92400E"}}[it.status]||{l:"Da fare",bg:"#F1E4CC",fg:"#7a5212"};
   return(
@@ -443,7 +444,7 @@ function isRoomNumber(camera){return /^\d{3,4}$/.test(String(camera||"").trim())
         <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
           <div style={{width:52,height:52,borderRadius:11,background:"#FBFAF7",border:"1px solid #E4E0D6",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0}}>
             <div style={{fontSize:7,color:"#B9842F",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>{isRoomNumber(it.room)?"Cam.":"Zona"}</div>
-            <div style={{fontSize:zoneFontSize(it.room),fontWeight:800,lineHeight:1,textAlign:"center",wordBreak:"break-word",padding:"0 2px"}}>{it.room}</div>
+            <div style={{fontSize:zoneFontSize(it.room),fontWeight:800,lineHeight:1.05,textAlign:"center",padding:"0 2px"}}>{it.room}</div>
           </div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:4}}>
@@ -481,7 +482,7 @@ function PlannedCard({p,user,onOpen}){
         <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
           <div style={{width:52,height:52,borderRadius:11,background:done?"#E6F2EB":"#EFF6FF",border:"1px solid "+(done?"#bfe2cf":"#BFDBFE"),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0}}>
             <div style={{fontSize:7,color:done?"#2E7D5B":"#1D4ED8",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>{isRoomNumber(p.room)?"Cam.":"Zona"}</div>
-            <div style={{fontSize:zoneFontSize(p.room),fontWeight:800,lineHeight:1,color:done?"#2E7D5B":"#1D4ED8",textAlign:"center",wordBreak:"break-word",padding:"0 2px"}}>{p.room}</div>
+            <div style={{fontSize:zoneFontSize(p.room),fontWeight:800,lineHeight:1.05,color:done?"#2E7D5B":"#1D4ED8",textAlign:"center",padding:"0 2px"}}>{p.room}</div>
           </div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:4,alignItems:"center"}}>
@@ -723,7 +724,7 @@ function PlannedDetail({user,p,onClose,onSave,onDelete,onFlash,onPhoto}){
 function NewForm({user,onClose,onSave,zones}){
   const[room,setRoom]=useState("");const[urg,setUrg]=useState("media");const[cat,setCat]=useState("varie");const[notes,setNotes]=useState("");const[photo,setPhoto]=useState(null);const[busy,setBusy]=useState(false);
   const[roomStatus,setRoomStatus]=useState(null);
-  const canSetRoomStatus=user.role!=="manutentore"; useEffect(()=>{ if(zones&&zones.length===1&&!room) setRoom(zones[0]); },[]);
+  const canSetRoomStatus=user.role!=="manutentore"&&user.role!=="responsabile_area"; useEffect(()=>{ if(zones&&zones.length===1&&!room) setRoom(zones[0]); },[]);
   const f=useRef();
   const pick=async e=>{const fl=e.target.files?.[0];if(!fl)return;setBusy(true);try{setPhoto(await compress(fl));}catch{}setBusy(false);};
   return(
@@ -919,13 +920,13 @@ function Login({onLogin}){
 // ── AdminPanel ────────────────────────────────────────────────────────────────
 function AdminPanel({adminPin,onSaveAdminPin,onSaveUsers,onBack}){
   const[users,setUsers]=useState([]);
-  const[newName,setNewName]=useState("");const[newRole,setNewRole]=useState("manutentore");const[newPin,setNewPin]=useState("");
+  const[newName,setNewName]=useState("");const[newRole,setNewRole]=useState("manutentore");const[newPin,setNewPin]=useState(""); const[areaSubtype,setAreaSubtype]=useState(null); const[newAreaZones,setNewAreaZones]=useState("");
   const[newAPin,setNewAPin]=useState("");const[showForm,setShowForm]=useState(false);
   const[importMsg,setImportMsg]=useState(null);
   const fileRef=useRef();
   useEffect(()=>{ DB.loadUsers().then(u=>setUsers(u)); },[]);
   const saveU=async u=>{setUsers(u);await DB.saveUsers(u);onSaveUsers&&onSaveUsers(u);};
-  const add=()=>{if(!newName.trim()||newPin.length!==4)return;const u=[...users,{id:uid(),name:newName.trim(),role:newRole,pin:newPin}];saveU(u);setShowForm(false);setNewName("");setNewPin("");};
+  const add=()=>{if(!newName.trim()||newPin.length!==4)return;const zonesArr=(newRole==="responsabile_area")?newAreaZones.split(",").map(z=>z.trim()).filter(Boolean):null;const nu={id:uid(),name:newName.trim(),role:newRole,pin:newPin};if(zonesArr&&zonesArr.length)nu.zones=zonesArr;const u=[...users,nu];saveU(u);setShowForm(false);setNewName("");setNewPin("");setAreaSubtype(null);setNewAreaZones("");};
   const rm=id=>saveU(users.filter(u=>u.id!==id));
   const[syncMsg,setSyncMsg]=useState(null);
   const syncDefaults=()=>{
@@ -979,8 +980,8 @@ function AdminPanel({adminPin,onSaveAdminPin,onSaveUsers,onBack}){
         <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
           {users.length===0&&<div style={{fontSize:13,color:"#5C645E",textAlign:"center",padding:"16px 0"}}>Nessun utente ancora.</div>}
           {users.map(u=><div key={u.id} style={{display:"flex",alignItems:"center",gap:10,background:"#fff",border:"1px solid #E4E0D6",borderRadius:11,padding:"11px 13px"}}>
-            <div style={{width:34,height:34,borderRadius:9,background:"#0E5C4914",display:"grid",placeItems:"center",flexShrink:0,color:"#0E5C49"}}>{I[ROLES[u.role]?.icon]}</div>
-            <div style={{flex:1}}><div style={{fontWeight:600}}>{u.name}</div><div style={{fontSize:12,color:"#5C645E"}}>{ROLES[u.role]?.label}</div></div>
+            <div style={{width:34,height:34,borderRadius:9,background:"#0E5C4914",display:"grid",placeItems:"center",flexShrink:0,color:"#0E5C49"}}>{I[roleDisplayFor(u.role,u.zones).icon]}</div>
+            <div style={{flex:1}}><div style={{fontWeight:600}}>{u.name}</div><div style={{fontSize:12,color:"#5C645E"}}>{roleDisplayFor(u.role,u.zones).label}</div></div>
             <button onClick={()=>rm(u.id)} style={{background:"#FBE9E6",border:"none",borderRadius:7,width:30,height:30,display:"grid",placeItems:"center",cursor:"pointer",color:"#B23A2E"}}>{I.trash}</button>
           </div>)}
         </div>
@@ -988,7 +989,8 @@ function AdminPanel({adminPin,onSaveAdminPin,onSaveUsers,onBack}){
           ?<div style={{background:"#fff",border:"1px solid #E4E0D6",borderRadius:14,padding:14,marginBottom:14}}>
             <div style={{fontWeight:700,marginBottom:12}}>Nuovo utente</div>
             <div style={{marginBottom:12}}><label style={{display:"block",fontSize:13,fontWeight:600,marginBottom:6}}>Nome</label><input style={inputSt} placeholder="es. Marco" value={newName} onChange={e=>setNewName(e.target.value)} autoFocus/></div>
-            <div style={{marginBottom:12}}><label style={{display:"block",fontSize:13,fontWeight:600,marginBottom:6}}>Ruolo</label><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>{Object.entries(ROLES).map(([k,r])=><button key={k} onClick={()=>setNewRole(k)} style={{padding:"10px 6px",borderRadius:10,border:"1.5px solid "+(newRole===k?"#0E5C49":"#E4E0D6"),background:newRole===k?"#0E5C4914":"#fff",fontWeight:600,fontSize:12,color:newRole===k?"#0E5C49":"#5C645E",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>{I[r.icon]} {r.label}</button>)}</div></div>
+            <div style={{marginBottom:12}}><label style={{display:"block",fontSize:13,fontWeight:600,marginBottom:6}}>Ruolo</label><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>{[...Object.entries(ROLES).filter(([k])=>k!=="responsabile_area"),["ristorante",{label:"Ristorante",icon:"wine"}],["colazioni",{label:"Colazioni",icon:"coffee"}]].map(([k,r])=>{const sel=k==="ristorante"?areaSubtype==="ristorante":k==="colazioni"?areaSubtype==="colazioni":newRole===k;return <button key={k} onClick={()=>{if(k==="ristorante"){setNewRole("responsabile_area");setAreaSubtype("ristorante");setNewAreaZones("Risto Wine, Risto Jazz");}else if(k==="colazioni"){setNewRole("responsabile_area");setAreaSubtype("colazioni");setNewAreaZones("Sala Colazioni");}else{setNewRole(k);setAreaSubtype(null);}}} style={{padding:"10px 6px",borderRadius:10,border:"1.5px solid "+(sel?"#0E5C49":"#E4E0D6"),background:sel?"#0E5C4914":"#fff",fontWeight:600,fontSize:12,color:sel?"#0E5C49":"#5C645E",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>{I[r.icon]} {r.label}</button>;})}</div></div>
+{areaSubtype&&<div style={{marginBottom:12}}><label style={{display:"block",fontSize:13,fontWeight:600,marginBottom:6}}>Zone consentite</label><input style={inputSt} placeholder="es. Risto Wine, Risto Jazz" value={newAreaZones} onChange={e=>setNewAreaZones(e.target.value)}/></div>}
             <div style={{marginBottom:12}}><label style={{display:"block",fontSize:13,fontWeight:600,marginBottom:6}}>PIN</label><input style={{...inputSt,textAlign:"center",fontSize:20,letterSpacing:8}} type="password" inputMode="numeric" maxLength={4} placeholder="••••" value={newPin} onChange={e=>setNewPin(e.target.value.replace(/\D/g,"").slice(0,4))}/></div>
             <div style={{display:"flex",gap:8}}><button onClick={add} disabled={!newName.trim()||newPin.length!==4} style={{...ctaSt,flex:1,opacity:!newName.trim()||newPin.length!==4?.5:1}}>{I.check} Crea</button><button onClick={()=>setShowForm(false)} style={{...ctaSt,flex:"0 0 44px",background:"#E4E0D6",color:"#1B2420"}}>{I.x}</button></div>
           </div>
