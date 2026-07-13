@@ -35,6 +35,9 @@ const I = {
   hammer:   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15.45 5.05L19 8.6l-3.55 3.54-3.54-3.54z"/><path d="M9.09 11.09L2 18.17V22h3.83l7.08-7.08"/></svg>,
   cal:      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
   users:    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+  wine:     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 22h8"/><path d="M12 15v7"/><path d="M12 15a7 7 0 0 0 7-7V2H5v6a7 7 0 0 0 7 7z"/></svg>,
+  coffee:   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>,
+  paint:    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h16v6H2z"/><path d="M8 9v6a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v2"/><circle cx="13" cy="19" r="1"/></svg>,
 };
 
 const URG = {
@@ -47,6 +50,7 @@ const CAT = {
   elettrico: { label:"Elettrico",       icon:"zap",     color:"#D97706" },
   clima:     { label:"Climatizzazione", icon:"wind",    color:"#0E7490" },
   arredo:    { label:"Arredo",          icon:"hammer",  color:"#7C5CFC" },
+  edilizio:  { label:"Edilizio",        icon:"paint",   color:"#92400E" },
   varie:     { label:"Varie",           icon:"wrench",  color:"#6B7280" },
 };
 const ROOM_ST = {
@@ -133,7 +137,7 @@ function ManualViewer({onClose}){const ref=useRef(null);useEffect(()=>{let cance
   const[myWorkOpen,setMyWorkOpen]=useState(false);
   const toastRef=useRef();
   const[search,setSearch]=useState("");
-  const FILTERS=["aperte","tec","att","fatte","tutte"];
+  const FILTERS=user?.role==="responsabile_area"?["aperte","fatte","tutte"]:["aperte","tec","att","fatte","tutte"];
   const swipeRef=useRef(null);
   const swipeStart=useRef(null);
   const swipeAnim=useRef(null);
@@ -159,7 +163,7 @@ function ManualViewer({onClose}){const ref=useRef(null);useEffect(()=>{let cance
   const savePlanned=async p=>{ setPlanned(prev=>sortPlanned([...prev.filter(i=>i.id!==p.id),p])); await DB.savePlanned(p); refresh(); };
   const removePlanned=async id=>{ setPlanned(prev=>prev.filter(i=>i.id!==id)); await DB.deletePlanned(id); refresh(); };
   const saveTec=async l=>{ setTec(l); await DB.saveTecnici(l); refresh(); };
-  const login=(role,name)=>{ const u={role,name:name.trim()}; setUser(u); ST.set("ses",u); }; const[allUsers,setAllUsers]=useState([]); useEffect(()=>{ DB.loadUsers().then(u=>setAllUsers(u)); },[]); const myZones=(allUsers.find(u=>u.name===user?.name)?.zones)||[];
+  const login=(role,name)=>{ const u={role,name:name.trim()}; setUser(u); ST.set("ses",u); }; const[allUsers,setAllUsers]=useState([]); useEffect(()=>{ DB.loadUsers().then(u=>setAllUsers(u)); },[]); const myZones=(allUsers.find(u=>u.name===user?.name)?.zones)||[]; const areaInfo=user&&user.role==="responsabile_area"?(myZones.map(z=>String(z).toLowerCase()).some(z=>z.includes("risto"))?{label:"Ristorante",icon:"wine"}:myZones.map(z=>String(z).toLowerCase()).some(z=>z.includes("colazioni"))?{label:"Colazioni",icon:"coffee"}:{label:"Responsabile Area",icon:"list"}):null; const myRoleLabel=areaInfo?areaInfo.label:ROLES[user?.role]?.label; const myRoleIcon=areaInfo?areaInfo.icon:ROLES[user?.role]?.icon;
   const logout=()=>{ setUser(null); ST.del("ses"); };
 
   const switchTab=t=>{setTab(t);setSearch("");};
@@ -234,6 +238,9 @@ function ManualViewer({onClose}){const ref=useRef(null);useEffect(()=>{let cance
     return String(i.room).toLowerCase().includes(q)||(i.notes||"").toLowerCase().includes(q)||(i.createdBy||"").toLowerCase().includes(q);
   });
 
+  const isAreaRole=user.role==="responsabile_area";
+  const filterRow1=isAreaRole?[["aperte","Da fare",cnt.todo]]:[["aperte","Da fare",cnt.todo],["tec","Tecnico",cnt.tec],["att","Attesa pezzo",cnt.att]];
+
   const menuItems=[
     {icon:I.refresh,  label:"Aggiorna",        fn:()=>{refresh();setMenuOpen(false);}},
     ...(user.role!=="governante"?[{icon:I.msg,label:"Centro WhatsApp",fn:()=>{setSheet("wa");setMenuOpen(false);}}]:[]),
@@ -274,7 +281,7 @@ function ManualViewer({onClose}){const ref=useRef(null);useEffect(()=>{let cance
           <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
             <div style={{textAlign:"right"}}>
               <div style={{fontSize:13,fontWeight:700,lineHeight:1.2}}>{user.name}</div>
-              <div style={{fontSize:10,opacity:.7,lineHeight:1.2}}>{ROLES[user.role]?.label}</div>
+              <div style={{fontSize:10,opacity:.7,lineHeight:1.2}}>{myRoleLabel}</div>
             </div>
             <button onClick={()=>setMenuOpen(true)} style={{background:"rgba(255,255,255,.14)",border:"none",color:"#fff",width:34,height:34,borderRadius:9,display:"grid",placeItems:"center",cursor:"pointer",flexShrink:0}}>{I.menu}</button>
           </div>
@@ -300,8 +307,8 @@ function ManualViewer({onClose}){const ref=useRef(null);useEffect(()=>{let cance
               <button onClick={()=>setMenuOpen(false)} style={{background:"rgba(255,255,255,.15)",border:"none",color:"#fff",width:30,height:30,borderRadius:8,display:"grid",placeItems:"center",cursor:"pointer"}}>{I.x}</button>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:10,background:"rgba(255,255,255,.12)",borderRadius:10,padding:"10px 12px"}}>
-              <div style={{width:36,height:36,borderRadius:9,background:"rgba(255,255,255,.2)",display:"grid",placeItems:"center",color:"#fff"}}>{I[ROLES[user.role].icon]}</div>
-              <div><div style={{fontWeight:700,fontSize:14}}>{user.name}</div><div style={{fontSize:11,opacity:.75}}>{ROLES[user.role].label}</div></div>
+              <div style={{width:36,height:36,borderRadius:9,background:"rgba(255,255,255,.2)",display:"grid",placeItems:"center",color:"#fff"}}>{I[myRoleIcon]}</div>
+              <div><div style={{fontWeight:700,fontSize:14}}>{user.name}</div><div style={{fontSize:11,opacity:.75}}>{myRoleLabel}</div></div>
             </div>
           </div>
           <div style={{flex:1,overflowY:"auto"}}>
@@ -336,8 +343,8 @@ function ManualViewer({onClose}){const ref=useRef(null);useEffect(()=>{let cance
               ))}
             </div>
           )}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7,padding:"12px 0 7px"}}>
-            {[["aperte","Da fare",cnt.todo],["tec","Tecnico",cnt.tec],["att","Attesa pezzo",cnt.att]].map(([k,l,n])=>(
+          <div style={{display:"grid",gridTemplateColumns:"repeat("+filterRow1.length+",1fr)",gap:7,padding:"12px 0 7px"}}>
+            {filterRow1.map(([k,l,n])=>(
               <button key={k} onClick={()=>setFilter(k)} style={{padding:"8px 6px",borderRadius:11,fontSize:12.5,fontWeight:600,background:filter===k?"#1B2420":"#fff",color:filter===k?"#fff":"#5C645E",border:"1px solid "+(filter===k?"#1B2420":"#E4E0D6"),cursor:"pointer",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
                 {l} <span style={{fontSize:11,opacity:.7}}>{n}</span>
               </button>
@@ -426,7 +433,7 @@ function ManualViewer({onClose}){const ref=useRef(null);useEffect(()=>{let cance
 }
 
 // ── Card segnalazione ─────────────────────────────────────────────────────────
-function isRoomNumber(camera){return /^\d{3,4}$/.test(String(camera||"").trim());} function Card({it,onOpen,onPhoto}){
+function isRoomNumber(camera){return /^\d{3,4}$/.test(String(camera||"").trim());} function zoneFontSize(v){const n=String(v||"").length;if(n>13)return 10;if(n>10)return 13;return 18;} function Card({it,onOpen,onPhoto}){
   const u=URG[it.urgency]||URG.media;
   const st={todo:{l:"Da fare",bg:"#F1E4CC",fg:"#7a5212"},done:{l:"Completata",bg:"#E6F2EB",fg:"#2E7D5B"},waiting:{l:"Attesa pezzo",bg:"#EDE9FE",fg:"#7C3AED"},tecnico:{l:"Tecnico",bg:"#FEF3C7",fg:"#92400E"}}[it.status]||{l:"Da fare",bg:"#F1E4CC",fg:"#7a5212"};
   return(
@@ -436,7 +443,7 @@ function isRoomNumber(camera){return /^\d{3,4}$/.test(String(camera||"").trim())
         <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
           <div style={{width:52,height:52,borderRadius:11,background:"#FBFAF7",border:"1px solid #E4E0D6",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0}}>
             <div style={{fontSize:7,color:"#B9842F",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>{isRoomNumber(it.room)?"Cam.":"Zona"}</div>
-            <div style={{fontSize:18,fontWeight:800,lineHeight:1,textAlign:"center"}}>{it.room}</div>
+            <div style={{fontSize:zoneFontSize(it.room),fontWeight:800,lineHeight:1,textAlign:"center",wordBreak:"break-word",padding:"0 2px"}}>{it.room}</div>
           </div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:4}}>
@@ -474,7 +481,7 @@ function PlannedCard({p,user,onOpen}){
         <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
           <div style={{width:52,height:52,borderRadius:11,background:done?"#E6F2EB":"#EFF6FF",border:"1px solid "+(done?"#bfe2cf":"#BFDBFE"),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0}}>
             <div style={{fontSize:7,color:done?"#2E7D5B":"#1D4ED8",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>{isRoomNumber(p.room)?"Cam.":"Zona"}</div>
-            <div style={{fontSize:18,fontWeight:800,lineHeight:1,color:done?"#2E7D5B":"#1D4ED8",textAlign:"center"}}>{p.room}</div>
+            <div style={{fontSize:zoneFontSize(p.room),fontWeight:800,lineHeight:1,color:done?"#2E7D5B":"#1D4ED8",textAlign:"center",wordBreak:"break-word",padding:"0 2px"}}>{p.room}</div>
           </div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:4,alignItems:"center"}}>
