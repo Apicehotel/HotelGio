@@ -138,6 +138,8 @@ function ManualViewer({onClose}){const ref=useRef(null);useEffect(()=>{let cance
   const[myWorkOpen,setMyWorkOpen]=useState(false);
   const toastRef=useRef();
   const[search,setSearch]=useState("");
+  const[sortBy,setSortBy]=useState("urgenza");
+  const[sortDir,setSortDir]=useState("asc");
   const FILTERS=user?.role==="responsabile_area"?["aperte","fatte","tutte"]:["aperte","tec","att","fatte","tutte"];
   const swipeRef=useRef(null);
   const swipeStart=useRef(null);
@@ -237,6 +239,13 @@ function ManualViewer({onClose}){const ref=useRef(null);useEffect(()=>{let cance
     if(!search.trim())return true;
     const q=search.toLowerCase();
     return String(i.room).toLowerCase().includes(q)||(i.notes||"").toLowerCase().includes(q)||(i.createdBy||"").toLowerCase().includes(q);
+  });
+  const sortedFil=[...fil].sort((a,b)=>{
+    let c=0;
+    if(sortBy==="urgenza") c=(URG[a.urgency]?.rank??1)-(URG[b.urgency]?.rank??1);
+    else if(sortBy==="camera") c=compareRoom(a.room,b.room);
+    else c=(a.createdAt||0)-(b.createdAt||0);
+    return sortDir==="desc"?-c:c;
   });
 
   const isAreaRole=user.role==="responsabile_area";
@@ -363,10 +372,20 @@ function ManualViewer({onClose}){const ref=useRef(null);useEffect(()=>{let cance
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Cerca camera, descrizione..." style={{...inputSt,paddingLeft:36,paddingTop:10,paddingBottom:10,fontSize:14,background:"#fff"}}/>
             {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#9CA3AF",display:"grid",placeItems:"center"}}>{I.x}</button>}
           </div>
+          <div style={{display:"flex",gap:7,marginBottom:10,alignItems:"center"}}>
+            <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{flex:1,background:"#fff",border:"1px solid #E4E0D6",borderRadius:11,padding:"9px 10px",fontSize:13,fontWeight:600,color:"#1B2420",outline:"none",fontFamily:"inherit"}}>
+              <option value="urgenza">Ordina: Urgenza</option>
+              <option value="camera">Ordina: Numero camera</option>
+              <option value="data">Ordina: Data</option>
+            </select>
+            <button onClick={()=>setSortDir(d=>d==="asc"?"desc":"asc")} title="Inverti ordine" style={{background:"#fff",border:"1px solid #E4E0D6",color:"#1B2420",width:38,height:38,borderRadius:11,display:"grid",placeItems:"center",cursor:"pointer",flexShrink:0,fontSize:15}}>
+              {sortDir==="asc"?"↓":"↑"}
+            </button>
+          </div>
           {fil.length===0&&(filter!=="fatte"||filteredDonePlanned.length===0)
             ?<div style={{textAlign:"center",padding:"60px 20px",color:"#5C645E"}}><div style={{marginBottom:12,display:"flex",justifyContent:"center",opacity:.3}}>{I.bed}</div><div style={{fontWeight:600,color:"#1B2420"}}>Nessuna segnalazione</div></div>
             :<>
-              {fil.map(it=><Card key={it.id} it={it} onOpen={()=>setSheet({d:it})} onPhoto={setViewer}/>)}
+              {sortedFil.map(it=><Card key={it.id} it={it} onOpen={()=>setSheet({d:it})} onPhoto={setViewer}/>)}
               {filter==="fatte"&&filteredDonePlanned.length>0&&<>
                 <div style={{fontSize:11,fontWeight:700,color:"#5C645E",textTransform:"uppercase",letterSpacing:.6,margin:"14px 0 8px",display:"flex",alignItems:"center",gap:6}}>{I.cal} Interventi pianificati · {filteredDonePlanned.length}</div>
                 {filteredDonePlanned.map(p=><PlannedCard key={p.id} p={p} user={user} onOpen={()=>setSheet({pd:p})}/>)}
@@ -434,7 +453,7 @@ function ManualViewer({onClose}){const ref=useRef(null);useEffect(()=>{let cance
 }
 
 // ── Card segnalazione ─────────────────────────────────────────────────────────
-function isRoomNumber(camera){return /^\d{3,4}$/.test(String(camera||"").trim());} function zoneFontSize(v){const n=String(v||"").length;if(n>13)return 8;if(n>10)return 13;return 18;} function Card({it,onOpen,onPhoto}){
+function isRoomNumber(camera){return /^\d{3,4}$/.test(String(camera||"").trim());} function zoneFontSize(v){if(isRoomNumber(v))return 18;const n=String(v||"").length;if(n>13)return 12;if(n>9)return 14;return 16;} function compareRoom(a,b){const an=isRoomNumber(a),bn=isRoomNumber(b);if(an&&bn)return parseInt(a,10)-parseInt(b,10);if(an&&!bn)return -1;if(!an&&bn)return 1;return String(a||"").localeCompare(String(b||""),"it",{sensitivity:"base"});} function Card({it,onOpen,onPhoto}){
   const u=URG[it.urgency]||URG.media;
   const st={todo:{l:"Da fare",bg:"#F1E4CC",fg:"#7a5212"},done:{l:"Completata",bg:"#E6F2EB",fg:"#2E7D5B"},waiting:{l:"Attesa pezzo",bg:"#EDE9FE",fg:"#7C3AED"},tecnico:{l:"Tecnico",bg:"#FEF3C7",fg:"#92400E"}}[it.status]||{l:"Da fare",bg:"#F1E4CC",fg:"#7a5212"};
   return(
@@ -442,7 +461,7 @@ function isRoomNumber(camera){return /^\d{3,4}$/.test(String(camera||"").trim())
       <div style={{width:6,background:u.fg,flexShrink:0}}/>
       <div style={{padding:"12px 14px",flex:1}}>
         <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
-          <div style={{width:52,height:52,borderRadius:11,background:"#FBFAF7",border:"1px solid #E4E0D6",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+          <div style={{width:88,minHeight:62,borderRadius:11,background:"#FBFAF7",border:"1px solid #E4E0D6",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0}}>
             <div style={{fontSize:7,color:"#B9842F",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>{isRoomNumber(it.room)?"Cam.":"Zona"}</div>
             <div style={{fontSize:zoneFontSize(it.room),fontWeight:800,lineHeight:1.05,textAlign:"center",padding:"0 2px"}}>{it.room}</div>
           </div>
@@ -480,7 +499,7 @@ function PlannedCard({p,user,onOpen}){
       <div style={{width:6,background:done?"#2E7D5B":"#1D4ED8",flexShrink:0}}/>
       <div style={{padding:"12px 14px",flex:1}}>
         <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
-          <div style={{width:52,height:52,borderRadius:11,background:done?"#E6F2EB":"#EFF6FF",border:"1px solid "+(done?"#bfe2cf":"#BFDBFE"),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+          <div style={{width:88,minHeight:62,borderRadius:11,background:done?"#E6F2EB":"#EFF6FF",border:"1px solid "+(done?"#bfe2cf":"#BFDBFE"),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",flexShrink:0}}>
             <div style={{fontSize:7,color:done?"#2E7D5B":"#1D4ED8",fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>{isRoomNumber(p.room)?"Cam.":"Zona"}</div>
             <div style={{fontSize:zoneFontSize(p.room),fontWeight:800,lineHeight:1.05,color:done?"#2E7D5B":"#1D4ED8",textAlign:"center",padding:"0 2px"}}>{p.room}</div>
           </div>
