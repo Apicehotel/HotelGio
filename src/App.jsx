@@ -37,7 +37,7 @@ const I = {
   users:    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
   wine:     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 22h8"/><path d="M12 15v7"/><path d="M12 15a7 7 0 0 0 7-7V2H5v6a7 7 0 0 0 7 7z"/></svg>,
   coffee:   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/></svg>,
-  paint:    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h16v6H2z"/><path d="M8 9v6a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v2"/><circle cx="13" cy="19" r="1"/></svg>,
+  paint:    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h16v6H2z"/><path d="M8 9v6a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v2"/><circle cx="13" cy="19" r="1"/></svg>, leaf: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>,
 };
 
 const URG = {
@@ -50,7 +50,7 @@ const CAT = {
   elettrico: { label:"Elettrico",       icon:"zap",     color:"#D97706" },
   clima:     { label:"Climatizzazione", icon:"wind",    color:"#0E7490" },
   arredo:    { label:"Arredo",          icon:"hammer",  color:"#7C5CFC" },
-  edilizio:  { label:"Edilizio",        icon:"paint",   color:"#92400E" },
+  edilizio:  { label:"Edilizio",        icon:"paint",   color:"#92400E" }, giardinaggio: { label:"Giardinaggio", icon:"leaf", color:"#16A34A" },
   varie:     { label:"Varie",           icon:"wrench",  color:"#6B7280" },
 };
 const ROOM_ST = {
@@ -1182,7 +1182,7 @@ function WACenter({user,items,onClose,onSave}){
     try{
       if(sender==="reception"){
         let room=exRoom(raw),desc=raw,cat="varie";
-        try{const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:300,messages:[{role:"user",content:'Assistente hotel. Estrai camera, descrizione, categoria (idraulico|elettrico|clima|arredo|varie). JSON: {"stanza":"","descrizione":"","categoria":""}. SOLO JSON.\n'+raw}]})});const d=await r.json();const t=(d.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("").trim();const p=JSON.parse(t.replace(/```json|```/g,"").trim());if(p.stanza)room=String(p.stanza);if(p.descrizione)desc=p.descrizione;if(CAT[p.categoria])cat=p.categoria;}catch{}
+        try{const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:300,messages:[{role:"user",content:'Assistente hotel. Estrai camera, descrizione, categoria (idraulico|elettrico|clima|arredo|edilizio|giardinaggio|varie). JSON: {"stanza":"","descrizione":"","categoria":""}. SOLO JSON.\n'+raw}]})});const d=await r.json();const t=(d.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("").trim();const p=JSON.parse(t.replace(/```json|```/g,"").trim());if(p.stanza)room=String(p.stanza);if(p.descrizione)desc=p.descrizione;if(CAT[p.categoria])cat=p.categoria;}catch{}
         if(!room){setRes({ok:false,m:"Camera non riconosciuta."});setBusy(false);return;}
         onSave({id:uid(),room,urgency:"alta",category:cat,notes:desc,photoBefore:null,photoAfter:null,status:"todo",createdBy:who.trim()||"WhatsApp",createdAt:Date.now(),completedBy:null,completedAt:null});
         setRes({ok:true,m:"Manutenzione creata per camera "+room+"."});
