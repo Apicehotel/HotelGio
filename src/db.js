@@ -29,6 +29,9 @@ function itemFromRow(r){
     pieceDecisionBy: r.pezzo_decisione_da,
     waitingBy: r.attesa_da,
     waitingSince: r.attesa_dal ? new Date(r.attesa_dal).getTime() : null,
+    pieceReplaced: r.pezzo_sostituito,
+    pieceReplacedBy: r.pezzo_sostituito_da,
+    pieceReplacedAt: r.pezzo_sostituito_il ? new Date(r.pezzo_sostituito_il).getTime() : null,
     tecnicoId: r.tecnico_id,
     tecnicoNome: r.tecnico_nome,
     tecnicoTelefono: r.tecnico_telefono,
@@ -59,6 +62,9 @@ function itemToRow(it){
     pezzo_decisione_da: it.pieceDecisionBy || null,
     attesa_da: it.waitingBy || null,
     attesa_dal: it.waitingSince ? new Date(it.waitingSince).toISOString() : null,
+    pezzo_sostituito: it.pieceReplaced || null,
+    pezzo_sostituito_da: it.pieceReplacedBy || null,
+    pezzo_sostituito_il: it.pieceReplacedAt ? new Date(it.pieceReplacedAt).toISOString() : null,
     tecnico_id: it.tecnicoId || null,
     tecnico_nome: it.tecnicoNome || null,
     tecnico_telefono: it.tecnicoTelefono || null,
@@ -89,6 +95,9 @@ function planFromRow(r){
     pieceDecisionBy: r.pezzo_decisione_da,
     waitingBy: r.attesa_da,
     waitingSince: r.attesa_dal ? new Date(r.attesa_dal).getTime() : null,
+    pieceReplaced: r.pezzo_sostituito,
+    pieceReplacedBy: r.pezzo_sostituito_da,
+    pieceReplacedAt: r.pezzo_sostituito_il ? new Date(r.pezzo_sostituito_il).getTime() : null,
   };
 }
 function planToRow(p){
@@ -110,6 +119,9 @@ function planToRow(p){
     pezzo_decisione_da: p.pieceDecisionBy || null,
     attesa_da: p.waitingBy || null,
     attesa_dal: p.waitingSince ? new Date(p.waitingSince).toISOString() : null,
+    pezzo_sostituito: p.pieceReplaced || null,
+    pezzo_sostituito_da: p.pieceReplacedBy || null,
+    pezzo_sostituito_il: p.pieceReplacedAt ? new Date(p.pieceReplacedAt).toISOString() : null,
   };
 }
 
