@@ -140,6 +140,7 @@ const[toast,setToast]=useState(null);
 const[pinSheet,setPinSheet]=useState(false);const[manualOpen,setManualOpen]=useState(false);const[feedbackOpen,setFeedbackOpen]=useState(false);
 const[menuOpen,setMenuOpen]=useState(false);
 const[myWorkOpen,setMyWorkOpen]=useState(false);
+          const[menu2Open,setMenu2Open]=useState(false);
 const toastRef=useRef();
 const[search,setSearch]=useState("");
 const[sortBy,setSortBy]=useState("urgenza");
@@ -265,6 +266,7 @@ const menuItems=[
 {icon:I.refresh, label:"Aggiorna report",fn:()=>{aggiornaReport();setMenuOpen(false);}},
 ]:[]),
 ];
+const menuItems2=[{icon:I.wrench,label:"Manutenzioni",fn:()=>{flash("Sezione in sviluppo");setMenu2Open(false);}},{icon:I.clock,label:"Planning",fn:()=>{flash("Sezione in sviluppo");setMenu2Open(false);}}];
 
 const pendingPlanned = planned.filter(p=>p.status==="pending"||p.status==="waiting");
 const donePlanned = planned.filter(p=>p.status==="done");
@@ -285,6 +287,7 @@ return(
 {/* Topbar */}
 <header style={{position:"sticky",top:0,zIndex:20,background:"#0E5C49",color:"#fff",boxShadow:"0 2px 12px rgba(0,0,0,.15)"}}>
 <div style={{maxWidth:760,margin:"0 auto",padding:"12px 16px",display:"flex",alignItems:"center",gap:10}}>
+          {user.role==="manutentore"&&<button onClick={()=>setMenu2Open(true)} style={{background:"rgba(255,255,255,.14)",border:"none",color:"#fff",width:34,height:34,borderRadius:9,display:"grid",placeItems:"center",cursor:"pointer",flexShrink:0}}>{I.menu}</button>}
 <div style={{display:"flex",alignItems:"center",gap:8}}>
 {I.hotel}
 <div>
@@ -343,6 +346,7 @@ Esci
 </div>
 </div>
 </>}
+          {menu2Open&&<><div onClick={()=>setMenu2Open(false)} style={{position:"fixed",inset:0,zIndex:60,background:"rgba(0,0,0,.35)"}}/><div style={{position:"fixed",top:0,left:0,bottom:0,width:260,zIndex:70,background:"#fff",boxShadow:"8px 0 30px rgba(0,0,0,.15)",display:"flex",flexDirection:"column"}}><div style={{background:"#0E5C49",padding:"20px 16px 16px",color:"#fff"}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><div style={{fontWeight:800,fontSize:15}}>Strumenti</div><button onClick={()=>setMenu2Open(false)} style={{background:"rgba(255,255,255,.15)",border:"none",color:"#fff",width:30,height:30,borderRadius:8,display:"grid",placeItems:"center",cursor:"pointer"}}>{I.x}</button></div></div><div style={{flex:1,overflowY:"auto"}}>{menuItems2.map((v,i)=><button key={i} onClick={v.fn} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"13px 20px",background:"none",border:"none",borderBottom:"1px solid #F4F2ED",cursor:"pointer",color:"#1B2420",fontSize:14,fontWeight:500}}><div style={{width:34,height:34,borderRadius:9,background:"#F4F2ED",display:"grid",placeItems:"center",flexShrink:0}}>{v.icon}</div>{v.label}</button>)}</div></div></>}
 
 {/* ===== TAB: SEGNALAZIONI ===== */}
 {tab==="segnalazioni"&&(
