@@ -70,7 +70,7 @@ function roleDisplayFor(role,zones){ if(role!=="responsabile_area") return {labe
 const DEF_TEC = [{ id:"t1", nome:"Pecetti", telefono:"3341196935" }, { id:"t2", nome:"Ciuffini", telefono:"3341196935" }, { id:"t3", nome:"AIT", telefono:"3341196935" }];
 const DEF_USERS = [
 { id:"d1", name:"Alberto", role:"direzione", pin:"0000" },
-{ id:"d2", name:"Paolo", role:"direzione", pin:"0000" },
+{ id:"d2", name:"Paolo", role:"direttore_congressi", pin:"0000" },
 { id:"d3", name:"Michele", role:"direzione", pin:"0000" },
 { id:"d4", name:"Giovanna", role:"direzione", pin:"0000" },
 { id:"u1", name:"Domenico", role:"manutentore", pin:"0000" },
