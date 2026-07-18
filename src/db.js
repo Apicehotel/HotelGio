@@ -189,7 +189,31 @@ export const DB = {
       if(error) console.error(error);
     }
   },
+
+    async loadPrenotazioni(){
+      const { data, error } = await supabase.from("prenotazioni_sale").select("*");
+      if(error){ console.error(error); return []; }
+      return data.map(prenotazioneFromRow);
+    },
+  async savePrenotazione(p){
+    const row = prenotazioneToRow(p);
+    const { error } = await supabase.from("prenotazioni_sale").upsert(row);
+    if(error) console.error(error);
+    return !error;
+  },
+  async deletePrenotazione(id){
+    const { error } = await supabase.from("prenotazioni_sale").delete().eq("id", id);
+    if(error) console.error(error);
+  },
 };
 
 // UID per nuovi record (Supabase genera comunque il suo, ma serve per la UI)
 export const newId = () => crypto.randomUUID();
+
+
+function prenotazioneFromRow(r){
+  return { id: r.id, room: r.sala, date: r.data, shift: r.turno, client: r.cliente, notes: r.note, createdBy: r.creato_da, createdAt: r.creato_il ? new Date(r.creato_il).getTime() : Date.now() };
+}
+function prenotazioneToRow(p){
+  return { id: p.id, sala: p.room, data: p.date, turno: p.shift, cliente: p.client, note: p.notes || null, creato_da: p.createdBy, creato_il: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString() };
+}
