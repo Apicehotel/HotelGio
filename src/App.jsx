@@ -1170,66 +1170,104 @@ const planningNavBtnSt = {
   cursor: "pointer",
 };
 
-function SlotPill({ label, booking, blocked, canEdit, onClick }) {
-  const disabled = blocked || (!booking && !canEdit);
+const planningPillBaseSt = {
+  display: "flex",
+  alignItems: "center",
+  gap: 4,
+  padding: "5px 6px",
+  borderRadius: 7,
+  fontSize: 10.5,
+  lineHeight: 1.25,
+  minHeight: 30,
+};
+
+function SlotPill({ label, booking, blocked, canEdit, onCreate, onDelete }) {
+  if (blocked) {
+    return (
+      <div
+        style={{
+          ...planningPillBaseSt,
+          background: "#F0EEE7",
+          border: "1px solid #E4E0D6",
+          color: "#B5AF9E",
+        }}
+      >
+        <span style={{ fontWeight: 700, opacity: 0.85 }}>{label}</span>
+        <span>—</span>
+      </div>
+    );
+  }
+  if (booking) {
+    return (
+      <div
+        style={{
+          ...planningPillBaseSt,
+          background: "#FBE9E6",
+          border: "1px solid #f3cec7",
+          color: "#B23A2E",
+        }}
+      >
+        <span style={{ fontWeight: 700, opacity: 0.85 }}>{label}</span>
+        <span
+          style={{
+            flex: 1,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+          title={booking.client}
+        >
+          {booking.client}
+        </span>
+        {canEdit && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(booking);
+            }}
+            title="Elimina prenotazione"
+            style={{
+              border: "none",
+              background: "transparent",
+              color: "#B23A2E",
+              cursor: "pointer",
+              padding: 2,
+              display: "grid",
+              placeItems: "center",
+              flexShrink: 0,
+            }}
+          >
+            {I.trash}
+          </button>
+        )}
+      </div>
+    );
+  }
   return (
     <div
-      onClick={disabled ? undefined : onClick}
-      title={booking ? booking.client : undefined}
+      onClick={canEdit ? onCreate : undefined}
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        padding: "5px 6px",
-        borderRadius: 7,
-        fontSize: 10.5,
-        lineHeight: 1.25,
-        minHeight: 30,
-        cursor: disabled ? "default" : "pointer",
-        background: blocked ? "#F0EEE7" : booking ? "#0E5C49" : "#FBFAF7",
-        color: blocked ? "#B5AF9E" : booking ? "#fff" : "#5C645E",
-        border: booking ? "none" : "1px dashed #E4E0D6",
-        opacity: blocked ? 0.6 : 1,
+        ...planningPillBaseSt,
+        background: "#E6F2EB",
+        border: "1px solid #bfe2cf",
+        color: "#0E5C49",
+        cursor: canEdit ? "pointer" : "default",
       }}
     >
       <span style={{ fontWeight: 700, opacity: 0.85 }}>{label}</span>
-      <span
-        style={{
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {blocked ? "—" : booking ? booking.client : "Libero"}
-      </span>
+      <span>Libero</span>
     </div>
   );
 }
 
-function SlotSheet({
-  sala,
-  dateLabel,
-  shift,
-  booking,
-  canEdit,
-  onClose,
-  onSave,
-  onDelete,
-}) {
-  const [client, setClient] = useState(booking?.client || "");
-  const [notes, setNotes] = useState(booking?.notes || "");
+function SlotSheet({ sala, dateLabel, shift, onClose, onSave }) {
+  const [client, setClient] = useState("");
+  const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
-  const isNew = !booking;
   const save = async () => {
     if (!client.trim() || busy) return;
     setBusy(true);
     await onSave({ client: client.trim(), notes: notes.trim() });
-    setBusy(false);
-  };
-  const del = async () => {
-    if (busy) return;
-    setBusy(true);
-    await onDelete();
     setBusy(false);
   };
   return (
@@ -1237,59 +1275,25 @@ function SlotSheet({
       <div style={{ fontSize: 13, color: "#5C645E", marginBottom: 14 }}>
         {dateLabel}
       </div>
-      {isNew ? (
-        canEdit ? (
-          <>
-            <Field label="Cliente *">
-              <input
-                style={inputSt}
-                value={client}
-                onChange={(e) => setClient(e.target.value)}
-                placeholder="Nome cliente/azienda"
-                autoFocus
-              />
-            </Field>
-            <Field label="Note (opzionale)">
-              <textarea
-                style={{ ...inputSt, resize: "vertical", minHeight: 80 }}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-              />
-            </Field>
-            <button
-              style={ctaSt}
-              disabled={!client.trim() || busy}
-              onClick={save}
-            >
-              {I.check} Prenota
-            </button>
-          </>
-        ) : (
-          <div style={{ color: "#5C645E" }}>Slot libero.</div>
-        )
-      ) : (
-        <>
-          <Field label="Cliente">
-            <input style={inputSt} value={booking.client} disabled />
-          </Field>
-          {booking.notes && (
-            <Field label="Note">
-              <div style={{ ...inputSt, background: "#FBFAF7" }}>
-                {booking.notes}
-              </div>
-            </Field>
-          )}
-          {canEdit && (
-            <button
-              style={{ ...ctaSt, background: "#B23A3A" }}
-              disabled={busy}
-              onClick={del}
-            >
-              {I.trash} Elimina prenotazione
-            </button>
-          )}
-        </>
-      )}
+      <Field label="Cliente *">
+        <input
+          style={inputSt}
+          value={client}
+          onChange={(e) => setClient(e.target.value)}
+          placeholder="Nome cliente/azienda"
+          autoFocus
+        />
+      </Field>
+      <Field label="Note (opzionale)">
+        <textarea
+          style={{ ...inputSt, resize: "vertical", minHeight: 80 }}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
+      </Field>
+      <button style={ctaSt} disabled={!client.trim() || busy} onClick={save}>
+        {I.check} Prenota
+      </button>
     </Sheet>
   );
 }
@@ -1339,12 +1343,10 @@ function PlanningSale({ user, onClose, onFlash }) {
     return list.some((b) => b.shift === shift);
   };
 
-  const openSlot = (sala, dateObj, shift, existing) => {
-    if (!existing) {
-      if (!canEdit) return;
-      if (conflict(sala, fmtISO(dateObj), shift)) return;
-    }
-    setSelected({ sala, dateObj, shift, existing });
+  const openCreate = (sala, dateObj, shift) => {
+    if (!canEdit) return;
+    if (conflict(sala, fmtISO(dateObj), shift)) return;
+    setSelected({ sala, dateObj, shift });
   };
 
   const handleSave = async ({ client, notes }) => {
@@ -1374,12 +1376,13 @@ function PlanningSale({ user, onClose, onFlash }) {
     setSelected(null);
   };
 
-  const handleDelete = async () => {
-    if (!selected?.existing) return;
-    await DB.deletePrenotazione(selected.existing.id);
+  const handleDelete = async (booking) => {
+    if (!canEdit) return;
+    if (!window.confirm(`Eliminare la prenotazione di "${booking.client}"?`))
+      return;
+    await DB.deletePrenotazione(booking.id);
     onFlash("Prenotazione eliminata");
     await load();
-    setSelected(null);
   };
 
   return (
@@ -1490,36 +1493,23 @@ function PlanningSale({ user, onClose, onFlash }) {
                     label="Matt."
                     booking={full || morning}
                     canEdit={canEdit}
-                    onClick={() =>
-                      openSlot(
-                        sala,
-                        d,
-                        full ? "tutto_giorno" : "mattina",
-                        full || morning,
-                      )
-                    }
+                    onCreate={() => openCreate(sala, d, "mattina")}
+                    onDelete={handleDelete}
                   />
                   <SlotPill
                     label="Pom."
                     booking={full || afternoon}
                     canEdit={canEdit}
-                    onClick={() =>
-                      openSlot(
-                        sala,
-                        d,
-                        full ? "tutto_giorno" : "pomeriggio",
-                        full || afternoon,
-                      )
-                    }
+                    onCreate={() => openCreate(sala, d, "pomeriggio")}
+                    onDelete={handleDelete}
                   />
                   <SlotPill
                     label="Giornata"
                     booking={full}
                     blocked={!full && (!!morning || !!afternoon)}
                     canEdit={canEdit}
-                    onClick={() =>
-                      openSlot(sala, d, "tutto_giorno", full)
-                    }
+                    onCreate={() => openCreate(sala, d, "tutto_giorno")}
+                    onDelete={handleDelete}
                   />
                 </div>
               );
@@ -1537,11 +1527,8 @@ function PlanningSale({ user, onClose, onFlash }) {
           sala={selected.sala}
           dateLabel={dayLabelP(selected.dateObj)}
           shift={selected.shift}
-          booking={selected.existing}
-          canEdit={canEdit}
           onClose={() => setSelected(null)}
           onSave={handleSave}
-          onDelete={handleDelete}
         />
       )}
     </Sheet>
