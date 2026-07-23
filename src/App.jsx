@@ -141,6 +141,7 @@ const[toast,setToast]=useState(null);
 const[pinSheet,setPinSheet]=useState(false);const[manualOpen,setManualOpen]=useState(false);const[feedbackOpen,setFeedbackOpen]=useState(false);
 const[menuOpen,setMenuOpen]=useState(false);
 const[notifOpen,setNotifOpen]=useState(false);
+const[isOffline,setIsOffline]=useState(typeof navigator!=="undefined"&&!navigator.onLine);
 const[myWorkOpen,setMyWorkOpen]=useState(false);
           const[menu2Open,setMenu2Open]=useState(false);
 const toastRef=useRef();
@@ -205,6 +206,12 @@ const ch=supabase.channel("apice-changes")
 .subscribe();
 return()=>{ mounted=false; supabase.removeChannel(ch); };
 },[user,refresh]);
+
+useEffect(()=>{
+const on=()=>setIsOffline(false), off=()=>setIsOffline(true);
+window.addEventListener("online",on);window.addEventListener("offline",off);
+return()=>{window.removeEventListener("online",on);window.removeEventListener("offline",off);};
+},[]);
 
 useEffect(()=>{
 const fn=()=>{ if(document.visibilityState==="visible") refresh(); };
@@ -348,6 +355,7 @@ Esci
 </div>
 </div>
 </>}
+{isOffline&&<div style={{position:"fixed",left:0,right:0,bottom:0,zIndex:95,background:"#8A6D2F",color:"#fff",padding:"10px 16px",fontSize:12.5,fontWeight:600,textAlign:"center"}}>Sei offline — stai vedendo gli ultimi dati salvati. Le modifiche non verranno inviate.</div>}
 {notifOpen&&<NotificheSettings user={user} flash={flash} onClose={()=>setNotifOpen(false)}/>}
           {menu2Open&&<><div onClick={()=>setMenu2Open(false)} style={{position:"fixed",inset:0,zIndex:60,background:"rgba(0,0,0,.35)"}}/><div style={{position:"fixed",top:0,left:0,bottom:0,width:260,zIndex:70,background:"#fff",boxShadow:"8px 0 30px rgba(0,0,0,.15)",display:"flex",flexDirection:"column"}}><div style={{background:"#0E5C49",padding:"20px 16px 16px",color:"#fff"}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}><div style={{fontWeight:800,fontSize:15}}>Strumenti</div><button onClick={()=>setMenu2Open(false)} style={{background:"rgba(255,255,255,.15)",border:"none",color:"#fff",width:30,height:30,borderRadius:8,display:"grid",placeItems:"center",cursor:"pointer"}}>{I.x}</button></div></div><div style={{flex:1,overflowY:"auto"}}>{menuItems2.map((v,i)=><button key={i} onClick={v.fn} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"13px 20px",background:"none",border:"none",borderBottom:"1px solid #F4F2ED",cursor:"pointer",color:"#1B2420",fontSize:14,fontWeight:500}}><div style={{width:34,height:34,borderRadius:9,background:"#F4F2ED",display:"grid",placeItems:"center",flexShrink:0}}>{v.icon}</div>{v.label}</button>)}</div></div></>}
 
