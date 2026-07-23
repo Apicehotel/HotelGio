@@ -5,7 +5,7 @@ module.exports = {
   settings: { react: { version: '18.2' } },
   plugins: ['react', 'react-hooks'],
   rules: {
-    'no-undef': 'error',
+    'no-undef': 'error','no-use-before-define': ['error', { functions: false, classes: false, variables: true }],
     'no-unused-vars': ['warn', { args: 'none', varsIgnorePattern: '^_' }],
     'no-dupe-keys': 'error',
     'no-dupe-args': 'error',

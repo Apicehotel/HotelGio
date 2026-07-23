@@ -3499,6 +3499,9 @@ function PlannedDetail({
 }) {
   const done = p.status === "done";
   const waiting = p.status === "waiting";
+  const isAssigned = p.assignees?.some(
+    (a) => a.name.trim().toLowerCase() === user.name.trim().toLowerCase(),
+  );
   const roomsDone = p.roomsDone || {};
   const hasRooms = Array.isArray(p.rooms) && p.rooms.length > 0;
   const doneCount = Object.keys(roomsDone).length;
@@ -3516,9 +3519,6 @@ function PlannedDetail({
     else next[r] = { by: user.name, at: Date.now() };
     onSave({ ...p, roomsDone: next });
   };
-  const isAssigned = p.assignees?.some(
-    (a) => a.name.trim().toLowerCase() === user.name.trim().toLowerCase(),
-  );
   const canComplete =
     (user.role === "direzione" ||
       user.role === "direttore_congressi" ||
