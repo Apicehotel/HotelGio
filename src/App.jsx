@@ -1119,6 +1119,435 @@ function ForceChangePin({ user, onDone, onFlash }) {
     </div>
   );
 }
+// ── Planning Sale ──────────────────────────────────────────────
+const SALE_CONGRESSI = [
+  "Sala Cravatte",
+  "Sala Fontivegge",
+  "Sala Vinarelli",
+  "Sala Etichette",
+];
+const SHIFT_LABELS = {
+  mattina: "Mattina",
+  pomeriggio: "Pomeriggio",
+  tutto_giorno: "Giornata intera",
+};
+const PLANNING_VIEWS = [
+  { key: "giorno", label: "Giorno", days: 1 },
+  { key: "settimana", label: "Settimana", days: 7 },
+  { key: "quindicina", label: "Quindicina", days: 15 },
+];
+const WD_IT = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
+const fmtISO = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const addDaysP = (d, n) => {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r;
+};
+const startOfDayP = (d) => {
+  const r = new Date(d);
+  r.setHours(0, 0, 0, 0);
+  return r;
+};
+const dayLabelP = (d) =>
+  `${WD_IT[d.getDay()]} ${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+
+const planningHeadCellSt = {
+  padding: "8px 6px",
+  fontSize: 11,
+  textAlign: "center",
+  color: "#1B2420",
+  borderBottom: "1px solid #E4E0D6",
+};
+const planningNavBtnSt = {
+  padding: "9px 14px",
+  borderRadius: 10,
+  border: "1px solid #E4E0D6",
+  background: "#fff",
+  color: "#1B2420",
+  fontSize: 15,
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+function SlotPill({ label, booking, blocked, canEdit, onClick }) {
+  const disabled = blocked || (!booking && !canEdit);
+  return (
+    <div
+      onClick={disabled ? undefined : onClick}
+      title={booking ? booking.client : undefined}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 4,
+        padding: "5px 6px",
+        borderRadius: 7,
+        fontSize: 10.5,
+        lineHeight: 1.25,
+        minHeight: 30,
+        cursor: disabled ? "default" : "pointer",
+        background: blocked ? "#F0EEE7" : booking ? "#0E5C49" : "#FBFAF7",
+        color: blocked ? "#B5AF9E" : booking ? "#fff" : "#5C645E",
+        border: booking ? "none" : "1px dashed #E4E0D6",
+        opacity: blocked ? 0.6 : 1,
+      }}
+    >
+      <span style={{ fontWeight: 700, opacity: 0.85 }}>{label}</span>
+      <span
+        style={{
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {blocked ? "—" : booking ? booking.client : "Libero"}
+      </span>
+    </div>
+  );
+}
+
+function SlotSheet({
+  sala,
+  dateLabel,
+  shift,
+  booking,
+  canEdit,
+  onClose,
+  onSave,
+  onDelete,
+}) {
+  const [client, setClient] = useState(booking?.client || "");
+  const [notes, setNotes] = useState(booking?.notes || "");
+  const [busy, setBusy] = useState(false);
+  const isNew = !booking;
+  const save = async () => {
+    if (!client.trim() || busy) return;
+    setBusy(true);
+    await onSave({ client: client.trim(), notes: notes.trim() });
+    setBusy(false);
+  };
+  const del = async () => {
+    if (busy) return;
+    setBusy(true);
+    await onDelete();
+    setBusy(false);
+  };
+  return (
+    <Sheet onClose={onClose} title={`${sala} — ${SHIFT_LABELS[shift]}`}>
+      <div style={{ fontSize: 13, color: "#5C645E", marginBottom: 14 }}>
+        {dateLabel}
+      </div>
+      {isNew ? (
+        canEdit ? (
+          <>
+            <Field label="Cliente *">
+              <input
+                style={inputSt}
+                value={client}
+                onChange={(e) => setClient(e.target.value)}
+                placeholder="Nome cliente/azienda"
+                autoFocus
+              />
+            </Field>
+            <Field label="Note (opzionale)">
+              <textarea
+                style={{ ...inputSt, resize: "vertical", minHeight: 80 }}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </Field>
+            <button
+              style={ctaSt}
+              disabled={!client.trim() || busy}
+              onClick={save}
+            >
+              {I.check} Prenota
+            </button>
+          </>
+        ) : (
+          <div style={{ color: "#5C645E" }}>Slot libero.</div>
+        )
+      ) : (
+        <>
+          <Field label="Cliente">
+            <input style={inputSt} value={booking.client} disabled />
+          </Field>
+          {booking.notes && (
+            <Field label="Note">
+              <div style={{ ...inputSt, background: "#FBFAF7" }}>
+                {booking.notes}
+              </div>
+            </Field>
+          )}
+          {canEdit && (
+            <button
+              style={{ ...ctaSt, background: "#B23A3A" }}
+              disabled={busy}
+              onClick={del}
+            >
+              {I.trash} Elimina prenotazione
+            </button>
+          )}
+        </>
+      )}
+    </Sheet>
+  );
+}
+
+function PlanningSale({ user, onClose, onFlash }) {
+  const canEdit =
+    user.role === "direttore_congressi" || user.role === "sviluppatore";
+  const [prenotazioni, setPrenotazioni] = useState([]);
+  const [view, setView] = useState("settimana");
+  const [anchor, setAnchor] = useState(() => startOfDayP(new Date()));
+  const [selected, setSelected] = useState(null);
+
+  const load = useCallback(async () => {
+    setPrenotazioni(await DB.loadPrenotazioni());
+  }, []);
+
+  useEffect(() => {
+    load();
+    const ch = supabase
+      .channel("prenotazioni_sale_ch")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "prenotazioni_sale" },
+        () => load(),
+      )
+      .subscribe();
+    return () => supabase.removeChannel(ch);
+  }, [load]);
+
+  const viewCfg = PLANNING_VIEWS.find((v) => v.key === view);
+  const days = Array.from({ length: viewCfg.days }, (_, i) =>
+    addDaysP(anchor, i),
+  );
+  const gridCols = `120px repeat(${days.length}, minmax(126px,1fr))`;
+
+  const prev = () => setAnchor((a) => addDaysP(a, -viewCfg.days));
+  const next = () => setAnchor((a) => addDaysP(a, viewCfg.days));
+  const today = () => setAnchor(startOfDayP(new Date()));
+
+  const bookingsFor = (sala, dateStr) =>
+    prenotazioni.filter((p) => p.room === sala && p.date === dateStr);
+
+  const conflict = (sala, dateStr, shift) => {
+    const list = bookingsFor(sala, dateStr);
+    if (shift === "tutto_giorno") return list.length > 0;
+    if (list.some((b) => b.shift === "tutto_giorno")) return true;
+    return list.some((b) => b.shift === shift);
+  };
+
+  const openSlot = (sala, dateObj, shift, existing) => {
+    if (!existing) {
+      if (!canEdit) return;
+      if (conflict(sala, fmtISO(dateObj), shift)) return;
+    }
+    setSelected({ sala, dateObj, shift, existing });
+  };
+
+  const handleSave = async ({ client, notes }) => {
+    if (!selected) return;
+    const dateStr = fmtISO(selected.dateObj);
+    if (conflict(selected.sala, dateStr, selected.shift)) {
+      onFlash("Slot non più disponibile", false);
+      setSelected(null);
+      return;
+    }
+    const ok = await DB.savePrenotazione({
+      id: newId(),
+      room: selected.sala,
+      date: dateStr,
+      shift: selected.shift,
+      client,
+      notes,
+      createdBy: user.name,
+      createdAt: Date.now(),
+    });
+    if (ok) {
+      onFlash("Prenotazione salvata ✓");
+      await load();
+    } else {
+      onFlash("Errore nel salvataggio", false);
+    }
+    setSelected(null);
+  };
+
+  const handleDelete = async () => {
+    if (!selected?.existing) return;
+    await DB.deletePrenotazione(selected.existing.id);
+    onFlash("Prenotazione eliminata");
+    await load();
+    setSelected(null);
+  };
+
+  return (
+    <Sheet onClose={onClose} title="Planning Sale">
+      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        {PLANNING_VIEWS.map((v) => (
+          <button
+            key={v.key}
+            onClick={() => setView(v.key)}
+            style={{
+              flex: 1,
+              padding: "9px 6px",
+              borderRadius: 10,
+              border: "1px solid #E4E0D6",
+              background: view === v.key ? "#0E5C49" : "#fff",
+              color: view === v.key ? "#fff" : "#1B2420",
+              fontWeight: 600,
+              fontSize: 13,
+              cursor: "pointer",
+            }}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+      <div
+        style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}
+      >
+        <button onClick={prev} style={planningNavBtnSt}>
+          ‹
+        </button>
+        <button onClick={today} style={{ ...planningNavBtnSt, flex: 1 }}>
+          Oggi
+        </button>
+        <button onClick={next} style={planningNavBtnSt}>
+          ›
+        </button>
+      </div>
+      <div
+        style={{
+          overflowX: "auto",
+          border: "1px solid #E4E0D6",
+          borderRadius: 12,
+          background: "#fff",
+        }}
+      >
+        <div style={{ display: "grid", gridTemplateColumns: gridCols }}>
+          <div
+            style={{
+              ...planningHeadCellSt,
+              position: "sticky",
+              left: 0,
+              background: "#fff",
+              zIndex: 1,
+            }}
+          />
+          {days.map((d) => {
+            const isToday = fmtISO(d) === fmtISO(new Date());
+            return (
+              <div
+                key={+d}
+                style={{
+                  ...planningHeadCellSt,
+                  background: isToday ? "#F0EAD8" : "#FBFAF7",
+                  fontWeight: 700,
+                }}
+              >
+                {dayLabelP(d)}
+              </div>
+            );
+          })}
+        </div>
+        {SALE_CONGRESSI.map((sala) => (
+          <div key={sala} style={{ display: "grid", gridTemplateColumns: gridCols }}>
+            <div
+              style={{
+                ...planningHeadCellSt,
+                textAlign: "left",
+                fontWeight: 700,
+                position: "sticky",
+                left: 0,
+                background: "#fff",
+                zIndex: 1,
+                borderTop: "1px solid #F0EEE7",
+              }}
+            >
+              {sala}
+            </div>
+            {days.map((d) => {
+              const dateStr = fmtISO(d);
+              const list = bookingsFor(sala, dateStr);
+              const full = list.find((b) => b.shift === "tutto_giorno");
+              const morning = list.find((b) => b.shift === "mattina");
+              const afternoon = list.find((b) => b.shift === "pomeriggio");
+              return (
+                <div
+                  key={dateStr}
+                  style={{
+                    padding: 6,
+                    borderTop: "1px solid #F0EEE7",
+                    borderLeft: "1px solid #F0EEE7",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 4,
+                  }}
+                >
+                  <SlotPill
+                    label="Matt."
+                    booking={full || morning}
+                    canEdit={canEdit}
+                    onClick={() =>
+                      openSlot(
+                        sala,
+                        d,
+                        full ? "tutto_giorno" : "mattina",
+                        full || morning,
+                      )
+                    }
+                  />
+                  <SlotPill
+                    label="Pom."
+                    booking={full || afternoon}
+                    canEdit={canEdit}
+                    onClick={() =>
+                      openSlot(
+                        sala,
+                        d,
+                        full ? "tutto_giorno" : "pomeriggio",
+                        full || afternoon,
+                      )
+                    }
+                  />
+                  <SlotPill
+                    label="Giornata"
+                    booking={full}
+                    blocked={!full && (!!morning || !!afternoon)}
+                    canEdit={canEdit}
+                    onClick={() =>
+                      openSlot(sala, d, "tutto_giorno", full)
+                    }
+                  />
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      {!canEdit && (
+        <div style={{ marginTop: 12, fontSize: 12, color: "#5C645E" }}>
+          Sola visualizzazione.
+        </div>
+      )}
+      {selected && (
+        <SlotSheet
+          sala={selected.sala}
+          dateLabel={dayLabelP(selected.dateObj)}
+          shift={selected.shift}
+          booking={selected.existing}
+          canEdit={canEdit}
+          onClose={() => setSelected(null)}
+          onSave={handleSave}
+          onDelete={handleDelete}
+        />
+      )}
+    </Sheet>
+  );
+}
+
 export default function App() {
   const [user, setUser] = useState(() => ST.get("ses"));
   const [items, setItems] = useState([]);
@@ -1140,6 +1569,7 @@ export default function App() {
   );
   const [myWorkOpen, setMyWorkOpen] = useState(false);
   const [menu2Open, setMenu2Open] = useState(false);
+  const [planningOpen, setPlanningOpen] = useState(false);
   const toastRef = useRef();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("urgenza");
@@ -1540,7 +1970,7 @@ export default function App() {
       icon: I.clock,
       label: "Planning Sale",
       fn: () => {
-        flash("Sezione in sviluppo");
+        setPlanningOpen(true);
         setMenu2Open(false);
       },
     },
@@ -2674,6 +3104,13 @@ export default function App() {
         <FeedbackForm
           user={user}
           onClose={() => setFeedbackOpen(false)}
+          onFlash={flash}
+        />
+      )}
+      {planningOpen && (
+        <PlanningSale
+          user={user}
+          onClose={() => setPlanningOpen(false)}
           onFlash={flash}
         />
       )}
