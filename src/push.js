@@ -1,16 +1,18 @@
 // push.js — gestione lato client delle notifiche Web Push
 // Importa questo modulo nell'app e chiama enablePush(user) da un bottone.
 
-const VAPID_PUBLIC_KEY = 'BG14aL8DKKY-bNfg4TbtBhonzx3ithFHA38HXP7qISrYu2gnw5Rzwr1rV_GPLqVZtFowThX3TDSqaZ013KKq1UM';
+const VAPID_PUBLIC_KEY =
+  "BG14aL8DKKY-bNfg4TbtBhonzx3ithFHA38HXP7qISrYu2gnw5Rzwr1rV_GPLqVZtFowThX3TDSqaZ013KKq1UM";
 
 // URL della Edge Function che salva l'iscrizione (Supabase)
-const SUBSCRIBE_URL = 'https://jmhzmwyolxzacjunfwcq.supabase.co/functions/v1/push-subscribe';
+const SUBSCRIBE_URL =
+  "https://jmhzmwyolxzacjunfwcq.supabase.co/functions/v1/push-subscribe";
 // Chiave anon del progetto (la stessa gia' usata dall'app in db.js)
-const SUPABASE_ANON_KEY = 'sb_publishable_XTYCLV5jSdk3ztG7PNuL_Q_1zu3tDwJ';
+const SUPABASE_ANON_KEY = "sb_publishable_XTYCLV5jSdk3ztG7PNuL_Q_1zu3tDwJ";
 
 function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const raw = atob(base64);
   const arr = new Uint8Array(raw.length);
   for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
@@ -19,22 +21,26 @@ function urlBase64ToUint8Array(base64String) {
 
 // True se il dispositivo puo' ricevere push. Su iPhone richiede l'app aggiunta alla Home.
 export function pushSupported() {
-  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  return (
+    "serviceWorker" in navigator &&
+    "PushManager" in window &&
+    "Notification" in window
+  );
 }
 
 // Attiva le notifiche per l'utente indicato. Va chiamata da un gesto (tap sul bottone).
 export async function enablePush(user) {
   if (!pushSupported()) {
-    return { ok: false, reason: 'unsupported' };
+    return { ok: false, reason: "unsupported" };
   }
   // Registra il service worker
-  const reg = await navigator.serviceWorker.register('/sw.js');
+  const reg = await navigator.serviceWorker.register("/sw.js");
   await navigator.serviceWorker.ready;
 
   // Chiede il permesso
   const perm = await Notification.requestPermission();
-  if (perm !== 'granted') {
-    return { ok: false, reason: 'denied' };
+  if (perm !== "granted") {
+    return { ok: false, reason: "denied" };
   }
 
   // Crea o recupera l'iscrizione push
@@ -48,11 +54,11 @@ export async function enablePush(user) {
 
   // Salva l'iscrizione su Supabase
   const res = await fetch(SUBSCRIBE_URL, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+      "Content-Type": "application/json",
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: "Bearer " + SUPABASE_ANON_KEY,
     },
     body: JSON.stringify({
       subscription: sub.toJSON(),
@@ -60,7 +66,7 @@ export async function enablePush(user) {
       role: user?.role || null,
     }),
   });
-  if (!res.ok) return { ok: false, reason: 'save_failed' };
+  if (!res.ok) return { ok: false, reason: "save_failed" };
   return { ok: true };
 }
 
@@ -72,13 +78,16 @@ export async function disablePush() {
   const sub = await reg.pushManager.getSubscription();
   if (sub) {
     await fetch(SUBSCRIBE_URL, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: "Bearer " + SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify({ action: 'unsubscribe', subscription: sub.toJSON() }),
+      body: JSON.stringify({
+        action: "unsubscribe",
+        subscription: sub.toJSON(),
+      }),
     });
     await sub.unsubscribe();
   }
