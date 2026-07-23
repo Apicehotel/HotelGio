@@ -3488,8 +3488,14 @@ function PlannedDetail({
   const hasRooms = Array.isArray(p.rooms) && p.rooms.length > 0;
   const doneCount = Object.keys(roomsDone).length;
   const pct = hasRooms ? Math.round((doneCount / p.rooms.length) * 100) : 0;
+  const canTick =
+    !done &&
+    (isAssigned ||
+      ["manutentore", "direzione", "reception", "direttore_congressi", "sviluppatore"].includes(
+        user.role,
+      ));
   const toggleRoom = (r) => {
-    if (done) return;
+    if (!canTick) return;
     const next = { ...roomsDone };
     if (next[r]) delete next[r];
     else next[r] = { by: user.name, at: Date.now() };
@@ -3716,14 +3722,20 @@ function PlannedDetail({
                     <button
                       key={r}
                       onClick={() => toggleRoom(r)}
-                      title={d ? "Fatta da " + d.by : "Tocca per spuntare"}
+                      title={
+                        d
+                          ? "Fatta da " + d.by
+                          : canTick
+                            ? "Tocca per spuntare"
+                            : "Solo chi esegue l'intervento puo' spuntare"
+                      }
                       style={{
                         minWidth: 54,
                         padding: "9px 6px",
                         borderRadius: 10,
                         fontSize: 13,
                         fontWeight: 700,
-                        cursor: done ? "default" : "pointer",
+                        cursor: canTick ? "pointer" : "default",
                         border: "1.5px solid " + (d ? "#0891B2" : "#E4E0D6"),
                         background: d ? "#0891B2" : "#fff",
                         color: d ? "#fff" : "#5C645E",
@@ -3734,9 +3746,14 @@ function PlannedDetail({
                   );
                 })}
               </div>
-              {doneCount > 0 && !done && (
+              {canTick && doneCount > 0 && (
                 <div style={{ fontSize: 11, color: "#5C645E", marginTop: 8 }}>
                   Tocca di nuovo una camera per togliere la spunta.
+                </div>
+              )}
+              {!canTick && !done && (
+                <div style={{ fontSize: 11, color: "#5C645E", marginTop: 8 }}>
+                  Solo chi esegue l'intervento puo' spuntare le camere.
                 </div>
               )}
             </div>
