@@ -493,6 +493,7 @@ const CAT = {
   edilizio: { label: "Edilizio", icon: "paint", color: "#92400E" },
   giardinaggio: { label: "Giardinaggio", icon: "leaf", color: "#16A34A" },
   filtri: { label: "Pulizia filtri", icon: "wind", color: "#0891B2" },
+  idromassaggio: { label: "Idromassaggio", icon: "droplet", color: "#7C5CFC" },
   varie: { label: "Varie", icon: "wrench", color: "#6B7280" },
 };
 const ROOM_ST = {
@@ -3189,7 +3190,13 @@ function NewPlanned({ user, tec, onClose, onSave }) {
   const camCheck = roomTrim ? resolveCamera(roomTrim) : null;
   const camInvalid = !!(camCheck && !camCheck.ok);
   const camResolved = camCheck && camCheck.ok ? camCheck.value : null;
-  const isFiltri = cat === "filtri";
+  const isFiltri = cat === "filtri" || cat === "idromassaggio";
+  const pianiDisponibili =
+    cat === "idromassaggio" ? PIANI.filter((pi) => pi.id.startsWith("jazz")) : PIANI;
+  useEffect(() => {
+    // se il piano scelto non e' piu' valido per la categoria, azzera
+    if (piano && !pianiDisponibili.some((pi) => pi.id === piano.id)) setPiano(null);
+  }, [cat]);
   const canSave = isFiltri
     ? !!piano && dt && assignees.length > 0
     : roomTrim && notes.trim() && dt && assignees.length > 0 && !camInvalid;
@@ -3281,7 +3288,7 @@ function NewPlanned({ user, tec, onClose, onSave }) {
       {isFiltri ? (
         <Field label="Piano *">
           <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
-            {PIANI.map((pi) => {
+            {pianiDisponibili.map((pi) => {
               const sel = piano?.id === pi.id;
               return (
                 <button
@@ -3450,7 +3457,7 @@ function NewPlanned({ user, tec, onClose, onSave }) {
             room: isFiltri ? piano.label : camResolved || roomTrim,
             category: cat,
             notes: isFiltri
-              ? notes.trim() || "Pulizia filtri " + piano.label
+              ? notes.trim() || CAT[cat].label + " " + piano.label
               : notes.trim(),
             scheduledAt: dt ? new Date(dt).getTime() : null,
             assignees,
