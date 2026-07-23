@@ -453,7 +453,7 @@ Esci
 )}
 
 {/* FAB */}
-<button onClick={()=>setSheet(tab==="segnalazioni"?"new":"newplan")} style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:tab==="interventi"?"#1D4ED8":"#B9842F",color:"#fff",fontWeight:700,fontSize:15,padding:"14px 24px",borderRadius:999,border:"none",cursor:"pointer",whiteSpace:"nowrap",boxShadow:tab==="interventi"?"0 10px 30px -8px rgba(29,78,216,.5)":"0 10px 30px -8px rgba(185,132,47,.6)",zIndex:30,display:tab==="interventi"&&user.role!=="direzione"&&user.role!=="reception"?"none":"flex",alignItems:"center",gap:8}}>
+<button onClick={()=>setSheet(tab==="segnalazioni"?"new":"newplan")} style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:tab==="interventi"?"#1D4ED8":"#B9842F",color:"#fff",fontWeight:700,fontSize:15,padding:"14px 24px",borderRadius:999,border:"none",cursor:"pointer",whiteSpace:"nowrap",boxShadow:tab==="interventi"?"0 10px 30px -8px rgba(29,78,216,.5)":"0 10px 30px -8px rgba(185,132,47,.6)",zIndex:30,display:tab==="interventi"&&!(user.role==="direzione"||user.role==="direttore_congressi"||user.role==="reception"||user.role==="sviluppatore")?"none":"flex",alignItems:"center",gap:8}}>
 {I.plus} {tab==="segnalazioni"?"Nuova segnalazione":"Nuovo intervento"}
 </button>
 
