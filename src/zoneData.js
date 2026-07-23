@@ -40,6 +40,18 @@ const WINE_P4 = [
   432, 433, 434,
 ];
 
+// Piani selezionabili per gli interventi con checklist camere (es. pulizia filtri)
+export const PIANI = [
+  { id: "jazz_p1", label: "Jazz 1\u00b0 piano", rooms: JAZZ_P1 },
+  { id: "jazz_p2", label: "Jazz 2\u00b0 piano", rooms: JAZZ_P2 },
+  { id: "jazz_p3", label: "Jazz 3\u00b0 piano", rooms: JAZZ_P3 },
+  { id: "jazz_p4", label: "Jazz 4\u00b0 piano", rooms: JAZZ_P4 },
+  { id: "wine_p1", label: "Wine 1\u00b0 piano", rooms: WINE_P1 },
+  { id: "wine_p2", label: "Wine 2\u00b0 piano", rooms: WINE_P2 },
+  { id: "wine_p3", label: "Wine 3\u00b0 piano", rooms: WINE_P3 },
+  { id: "wine_p4", label: "Wine 4\u00b0 piano", rooms: WINE_P4 },
+].map((p) => ({ ...p, rooms: p.rooms.map(String) }));
+
 export const ROOM_NUMBERS = new Set(
   [
     ...JAZZ_P1,

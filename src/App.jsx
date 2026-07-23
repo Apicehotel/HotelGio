@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { DB, supabase, newId } from "./db.js";
-import { resolveCamera, ZONE_NAMES, ROOM_NUMBERS } from "./zoneData.js";
+import { resolveCamera, ZONE_NAMES, ROOM_NUMBERS, PIANI } from "./zoneData.js";
 import NotificheSettings, { playNotifSound } from "./NotificheSettings";
 
 const HOTEL_LOGO =
@@ -492,6 +492,7 @@ const CAT = {
   arredo: { label: "Arredo", icon: "hammer", color: "#7C5CFC" },
   edilizio: { label: "Edilizio", icon: "paint", color: "#92400E" },
   giardinaggio: { label: "Giardinaggio", icon: "leaf", color: "#16A34A" },
+  filtri: { label: "Pulizia filtri", icon: "wind", color: "#0891B2" },
   varie: { label: "Varie", icon: "wrench", color: "#6B7280" },
 };
 const ROOM_ST = {
@@ -3081,6 +3082,25 @@ function PlannedCard({ p, user, onOpen }) {
             >
               {p.notes || <em style={{ color: "#5C645E" }}>Nessuna nota</em>}
             </div>{" "}
+            {Array.isArray(p.rooms) && p.rooms.length > 0 && (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ height: 7, borderRadius: 4, background: "#E9F3F5", overflow: "hidden" }}>
+                  <div
+                    style={{
+                      height: "100%",
+                      width:
+                        Math.round((Object.keys(p.roomsDone || {}).length / p.rooms.length) * 100) + "%",
+                      background: "#0891B2",
+                      transition: "width .3s",
+                    }}
+                  />
+                </div>
+                <div style={{ fontSize: 11.5, color: "#0E7490", marginTop: 4, fontWeight: 600 }}>
+                  {Object.keys(p.roomsDone || {}).length} di {p.rooms.length} camere ·{" "}
+                  {Math.round((Object.keys(p.roomsDone || {}).length / p.rooms.length) * 100)}%
+                </div>
+              </div>
+            )}
             <div
               style={{
                 fontSize: 11,
@@ -3138,6 +3158,7 @@ function PlannedCard({ p, user, onOpen }) {
 function NewPlanned({ user, tec, onClose, onSave }) {
   const [room, setRoom] = useState("");
   const [cat, setCat] = useState("varie");
+  const [piano, setPiano] = useState(null);
   const [notes, setNotes] = useState("");
   const [dt, setDt] = useState("");
   const [assignees, setAssignees] = useState([]);
@@ -3168,8 +3189,10 @@ function NewPlanned({ user, tec, onClose, onSave }) {
   const camCheck = roomTrim ? resolveCamera(roomTrim) : null;
   const camInvalid = !!(camCheck && !camCheck.ok);
   const camResolved = camCheck && camCheck.ok ? camCheck.value : null;
-  const canSave =
-    roomTrim && notes.trim() && dt && assignees.length > 0 && !camInvalid;
+  const isFiltri = cat === "filtri";
+  const canSave = isFiltri
+    ? !!piano && dt && assignees.length > 0
+    : roomTrim && notes.trim() && dt && assignees.length > 0 && !camInvalid;
   const AssigneeRow = ({ u, accent }) => {
     const sel = assignees.some((a) => a.id === u.id);
     return (
@@ -3255,21 +3278,55 @@ function NewPlanned({ user, tec, onClose, onSave }) {
   return (
     <Sheet onClose={onClose} title="Nuovo intervento pianificato">
       {" "}
-      <Field label="Numero camera *">
-        {" "}
-        <CameraZonaField value={room} onChange={setRoom} autoFocus />
-        {camInvalid && (
-          <div style={{ fontSize: 12, color: "#B23A2E", marginTop: 6 }}>
-            Numero camera o zona non valida. Controlla il numero o scegli una
-            zona nota (es. Hall Jazz, Reception...).
+      {isFiltri ? (
+        <Field label="Piano *">
+          <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+            {PIANI.map((pi) => {
+              const sel = piano?.id === pi.id;
+              return (
+                <button
+                  key={pi.id}
+                  onClick={() => setPiano(pi)}
+                  style={{
+                    padding: "9px 13px",
+                    borderRadius: 11,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    border: "1.5px solid " + (sel ? "#0891B2" : "#E4E0D6"),
+                    background: sel ? "#0891B211" : "#fff",
+                    color: sel ? "#0E7490" : "#5C645E",
+                  }}
+                >
+                  {pi.label}
+                </button>
+              );
+            })}
           </div>
-        )}
-        {camResolved && camResolved !== roomTrim && (
-          <div style={{ fontSize: 12, color: "#2E7D5B", marginTop: 6 }}>
-            Zona riconosciuta: {camResolved}
-          </div>
-        )}{" "}
-      </Field>{" "}
+          {piano && (
+            <div style={{ fontSize: 12, color: "#0E7490", marginTop: 8 }}>
+              {piano.rooms.length} camere da spuntare · dalla {piano.rooms[0]}{" "}
+              alla {piano.rooms[piano.rooms.length - 1]}
+            </div>
+          )}
+        </Field>
+      ) : (
+        <Field label="Numero camera *">
+          {" "}
+          <CameraZonaField value={room} onChange={setRoom} autoFocus />
+          {camInvalid && (
+            <div style={{ fontSize: 12, color: "#B23A2E", marginTop: 6 }}>
+              Numero camera o zona non valida. Controlla il numero o scegli una
+              zona nota (es. Hall Jazz, Reception...).
+            </div>
+          )}
+          {camResolved && camResolved !== roomTrim && (
+            <div style={{ fontSize: 12, color: "#2E7D5B", marginTop: 6 }}>
+              Zona riconosciuta: {camResolved}
+            </div>
+          )}{" "}
+        </Field>
+      )}{" "}
       <Field label="Categoria *">
         {" "}
         <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
@@ -3390,9 +3447,11 @@ function NewPlanned({ user, tec, onClose, onSave }) {
         onClick={() =>
           onSave({
             id: uid(),
-            room: camResolved || roomTrim,
+            room: isFiltri ? piano.label : camResolved || roomTrim,
             category: cat,
-            notes: notes.trim(),
+            notes: isFiltri
+              ? notes.trim() || "Pulizia filtri " + piano.label
+              : notes.trim(),
             scheduledAt: dt ? new Date(dt).getTime() : null,
             assignees,
             status: "pending",
@@ -3400,6 +3459,8 @@ function NewPlanned({ user, tec, onClose, onSave }) {
             createdAt: Date.now(),
             completedBy: null,
             completedAt: null,
+            rooms: isFiltri ? piano.rooms : null,
+            roomsDone: {},
           })
         }
         disabled={!canSave}
@@ -3423,6 +3484,17 @@ function PlannedDetail({
 }) {
   const done = p.status === "done";
   const waiting = p.status === "waiting";
+  const roomsDone = p.roomsDone || {};
+  const hasRooms = Array.isArray(p.rooms) && p.rooms.length > 0;
+  const doneCount = Object.keys(roomsDone).length;
+  const pct = hasRooms ? Math.round((doneCount / p.rooms.length) * 100) : 0;
+  const toggleRoom = (r) => {
+    if (done) return;
+    const next = { ...roomsDone };
+    if (next[r]) delete next[r];
+    else next[r] = { by: user.name, at: Date.now() };
+    onSave({ ...p, roomsDone: next });
+  };
   const isAssigned = p.assignees?.some(
     (a) => a.name.trim().toLowerCase() === user.name.trim().toLowerCase(),
   );
@@ -3602,6 +3674,73 @@ function PlannedDetail({
           <div style={{ fontSize: 14, lineHeight: 1.45, marginBottom: 8 }}>
             {p.notes || "—"}
           </div>{" "}
+          {hasRooms && (
+            <div style={{ marginBottom: 10 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "baseline",
+                  justifyContent: "space-between",
+                  marginBottom: 6,
+                }}
+              >
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: "#0E7490" }}>
+                  {doneCount} di {p.rooms.length} camere
+                </span>
+                <span style={{ fontSize: 15, fontWeight: 800, color: "#0891B2" }}>
+                  {pct}%
+                </span>
+              </div>
+              <div
+                style={{
+                  height: 9,
+                  borderRadius: 5,
+                  background: "#E9F3F5",
+                  overflow: "hidden",
+                  marginBottom: 10,
+                }}
+              >
+                <div
+                  style={{
+                    height: "100%",
+                    width: pct + "%",
+                    background: "#0891B2",
+                    transition: "width .3s",
+                  }}
+                />
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {p.rooms.map((r) => {
+                  const d = roomsDone[r];
+                  return (
+                    <button
+                      key={r}
+                      onClick={() => toggleRoom(r)}
+                      title={d ? "Fatta da " + d.by : "Tocca per spuntare"}
+                      style={{
+                        minWidth: 54,
+                        padding: "9px 6px",
+                        borderRadius: 10,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: done ? "default" : "pointer",
+                        border: "1.5px solid " + (d ? "#0891B2" : "#E4E0D6"),
+                        background: d ? "#0891B2" : "#fff",
+                        color: d ? "#fff" : "#5C645E",
+                      }}
+                    >
+                      {r}
+                    </button>
+                  );
+                })}
+              </div>
+              {doneCount > 0 && !done && (
+                <div style={{ fontSize: 11, color: "#5C645E", marginTop: 8 }}>
+                  Tocca di nuovo una camera per togliere la spunta.
+                </div>
+              )}
+            </div>
+          )}
           <div style={{ fontSize: 11, color: "#5C645E" }}>
             Creato da {p.createdBy} · {fmt(p.createdAt)}
           </div>{" "}

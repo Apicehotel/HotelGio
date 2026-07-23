@@ -118,6 +118,8 @@ function planFromRow(r) {
     pieceReplacedAt: r.pezzo_sostituito_il
       ? new Date(r.pezzo_sostituito_il).getTime()
       : null,
+    rooms: r.camere || null,
+    roomsDone: r.camere_fatte || {},
   };
 }
 function planToRow(p) {
@@ -148,6 +150,8 @@ function planToRow(p) {
     pezzo_sostituito_il: p.pieceReplacedAt
       ? new Date(p.pieceReplacedAt).toISOString()
       : null,
+    camere: p.rooms || null,
+    camere_fatte: p.roomsDone || {},
   };
 }
 
