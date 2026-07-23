@@ -3197,6 +3197,12 @@ function NewPlanned({ user, tec, onClose, onSave }) {
     // se il piano scelto non e' piu' valido per la categoria, azzera
     if (piano && !pianiDisponibili.some((pi) => pi.id === piano.id)) setPiano(null);
   }, [cat]);
+  // l'idromassaggio e' solo nelle camere pari
+  const camereDelPiano = piano
+    ? cat === "idromassaggio"
+      ? piano.rooms.filter((r) => Number(r) % 2 === 0)
+      : piano.rooms
+    : [];
   const canSave = isFiltri
     ? !!piano && dt && assignees.length > 0
     : roomTrim && notes.trim() && dt && assignees.length > 0 && !camInvalid;
@@ -3312,8 +3318,10 @@ function NewPlanned({ user, tec, onClose, onSave }) {
           </div>
           {piano && (
             <div style={{ fontSize: 12, color: "#0E7490", marginTop: 8 }}>
-              {piano.rooms.length} camere da spuntare · dalla {piano.rooms[0]}{" "}
-              alla {piano.rooms[piano.rooms.length - 1]}
+              {camereDelPiano.length} camere da spuntare · dalla{" "}
+              {camereDelPiano[0]} alla{" "}
+              {camereDelPiano[camereDelPiano.length - 1]}
+              {cat === "idromassaggio" && " (solo camere pari)"}
             </div>
           )}
         </Field>
@@ -3466,7 +3474,7 @@ function NewPlanned({ user, tec, onClose, onSave }) {
             createdAt: Date.now(),
             completedBy: null,
             completedAt: null,
-            rooms: isFiltri ? piano.rooms : null,
+            rooms: isFiltri ? camereDelPiano : null,
             roomsDone: {},
           })
         }
