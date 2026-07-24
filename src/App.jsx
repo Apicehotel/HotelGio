@@ -1945,14 +1945,19 @@ export default function App() {
       : []),
   ];
   const menuItems2 = [
-    {
-      icon: I.wrench,
-      label: "Manutenzioni",
-      fn: () => {
-        flash("Sezione in sviluppo");
-        setMenu2Open(false);
-      },
-    },
+    // "Manutenzioni" non e' ancora pronta: visibile solo allo sviluppatore
+    ...(user.role === "sviluppatore"
+      ? [
+          {
+            icon: I.wrench,
+            label: "Manutenzioni",
+            fn: () => {
+              flash("Sezione in sviluppo");
+              setMenu2Open(false);
+            },
+          },
+        ]
+      : []),
     {
       icon: I.clock,
       label: "Planning Sale",
