@@ -1177,12 +1177,50 @@ function ForceChangePin({ user, onDone, onFlash }) {
   );
 }
 // ── Planning Sale ──────────────────────────────────────────────
-const SALE_CONGRESSI = [
-  "Sala Cravatte",
-  "Sala Fontivegge",
-  "Sala Vinarelli",
-  "Sala Etichette",
+// Sale del centro congressi, come nel planning cartaceo.
+// "parts" elenca gli spazi base occupati: serve a bloccare le combinazioni
+// (es. prenotando Trumpet 1+2 non sono piu' disponibili Trumpet 1 e Trumpet 2).
+const SALE_DEF = [
+  { name: "Guitar", parts: ["guitar"] },
+  { name: "Drums", parts: ["drums"] },
+  { name: "Room", parts: ["room"] },
+  { name: "Preservation", parts: ["preservation"] },
+  { name: "Cool", parts: ["cool"] },
+  { name: "Trumpet 1", parts: ["t1"] },
+  { name: "Trumpet 2", parts: ["t2"] },
+  { name: "Trumpet 3", parts: ["t3"] },
+  { name: "Trumpet 4", parts: ["t4"] },
+  { name: "Trumpet 1+2", parts: ["t1", "t2"] },
+  { name: "Trumpet 2+3", parts: ["t2", "t3"] },
+  { name: "Trumpet 3+4", parts: ["t3", "t4"] },
+  { name: "Trumpet 2+3+4", parts: ["t2", "t3", "t4"] },
+  { name: "Trumpet 1+2+3+4", parts: ["t1", "t2", "t3", "t4"] },
+  { name: "Sax 1", parts: ["s1"] },
+  { name: "Sax 2", parts: ["s2"] },
+  { name: "Sax 3", parts: ["s3"] },
+  { name: "Sax 1+2", parts: ["s1", "s2"] },
+  { name: "Sax 2+3", parts: ["s2", "s3"] },
+  { name: "Sax 1+2+3", parts: ["s1", "s2", "s3"] },
+  { name: "Auditorium", parts: ["auditorium"] },
+  { name: "Cantina", parts: ["cantina"] },
+  { name: "Gusto", parts: ["gusto"] },
+  { name: "Cravatte", parts: ["cravatte"] },
+  { name: "Sala delle Feste", parts: ["feste"] },
 ];
+const SALE_CONGRESSI = SALE_DEF.map((s) => s.name);
+const SALA_PARTS = Object.fromEntries(SALE_DEF.map((s) => [s.name, s.parts]));
+// due sale sono in conflitto se condividono almeno uno spazio base
+const saleInConflitto = (a, b) => {
+  const pa = SALA_PARTS[a] || [];
+  const pb = SALA_PARTS[b] || [];
+  return pa.some((x) => pb.includes(x));
+};
+// colori dei turni, come nel planning cartaceo
+const SHIFT_COLORS = {
+  mattina: { bg: "#E7EFFB", border: "#BBD1F0", fg: "#1D4ED8" },
+  pomeriggio: { bg: "#FBE7F3", border: "#F0BFDC", fg: "#B0338B" },
+  tutto_giorno: { bg: "#FBE9E6", border: "#F3CEC7", fg: "#B23A2E" },
+};
 const SHIFT_LABELS = {
   mattina: "Mattina",
   pomeriggio: "Pomeriggio",
@@ -1238,7 +1276,43 @@ const planningPillBaseSt = {
   minHeight: 30,
 };
 
-function SlotPill({ label, booking, blocked, canEdit, onCreate, onDelete }) {
+function SlotPill({
+  label,
+  shift,
+  booking,
+  blocked,
+  occupiedBy,
+  canEdit,
+  onCreate,
+  onDelete,
+}) {
+  // occupata da una sala combinata che usa gli stessi spazi
+  if (!booking && occupiedBy) {
+    return (
+      <div
+        style={{
+          ...planningPillBaseSt,
+          background: "#F5F3EE",
+          border: "1px dashed #D9D3C4",
+          color: "#8A8578",
+        }}
+        title={"Occupata da " + occupiedBy.room + " (" + occupiedBy.client + ")"}
+      >
+        <span style={{ fontWeight: 700, opacity: 0.85 }}>{label}</span>
+        <span
+          style={{
+            flex: 1,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            fontStyle: "italic",
+          }}
+        >
+          {occupiedBy.room}
+        </span>
+      </div>
+    );
+  }
   if (blocked) {
     return (
       <div
@@ -1259,9 +1333,11 @@ function SlotPill({ label, booking, blocked, canEdit, onCreate, onDelete }) {
       <div
         style={{
           ...planningPillBaseSt,
-          background: "#FBE9E6",
-          border: "1px solid #f3cec7",
-          color: "#B23A2E",
+          background: (SHIFT_COLORS[booking.shift] || SHIFT_COLORS.tutto_giorno).bg,
+          border:
+            "1px solid " +
+            (SHIFT_COLORS[booking.shift] || SHIFT_COLORS.tutto_giorno).border,
+          color: (SHIFT_COLORS[booking.shift] || SHIFT_COLORS.tutto_giorno).fg,
         }}
       >
         <span style={{ fontWeight: 700, opacity: 0.85 }}>{label}</span>
@@ -1397,8 +1473,16 @@ function PlanningSale({ user, onClose, onFlash }) {
   const next = () => setAnchor((a) => addDaysP(a, viewCfg.days));
   const today = () => setAnchor(startOfDayP(new Date()));
 
+  // prenotazioni proprie della sala
   const bookingsFor = (sala, dateStr) =>
     prenotazioni.filter((p) => p.room === sala && p.date === dateStr);
+  // prenotazioni che rendono la sala indisponibile perche' su spazi condivisi
+  // (es. Trumpet 1+2 occupa anche Trumpet 1 e Trumpet 2)
+  const overlapFor = (sala, dateStr) =>
+    prenotazioni.filter(
+      (p) =>
+        p.date === dateStr && p.room !== sala && saleInConflitto(p.room, sala),
+    );
 
   const conflict = (sala, dateStr, shift) => {
     const list = bookingsFor(sala, dateStr);
@@ -1551,6 +1635,11 @@ function PlanningSale({ user, onClose, onFlash }) {
               const full = list.find((b) => b.shift === "tutto_giorno");
               const morning = list.find((b) => b.shift === "mattina");
               const afternoon = list.find((b) => b.shift === "pomeriggio");
+              // occupazioni indirette: sale combinate che usano gli stessi spazi
+              const ov = overlapFor(sala, dateStr);
+              const ovFull = ov.find((b) => b.shift === "tutto_giorno");
+              const ovMorning = ov.find((b) => b.shift === "mattina");
+              const ovAfternoon = ov.find((b) => b.shift === "pomeriggio");
               return (
                 <div
                   key={dateStr}
@@ -1565,22 +1654,28 @@ function PlanningSale({ user, onClose, onFlash }) {
                 >
                   <SlotPill
                     label="Matt."
+                    shift="mattina"
                     booking={full || morning}
+                    occupiedBy={ovFull || ovMorning}
                     canEdit={canEdit}
                     onCreate={() => openCreate(sala, d, "mattina")}
                     onDelete={handleDelete}
                   />
                   <SlotPill
                     label="Pom."
+                    shift="pomeriggio"
                     booking={full || afternoon}
+                    occupiedBy={ovFull || ovAfternoon}
                     canEdit={canEdit}
                     onCreate={() => openCreate(sala, d, "pomeriggio")}
                     onDelete={handleDelete}
                   />
                   <SlotPill
                     label="Giornata"
+                    shift="tutto_giorno"
                     booking={full}
                     blocked={!full && (!!morning || !!afternoon)}
+                    occupiedBy={ovFull || ovMorning || ovAfternoon}
                     canEdit={canEdit}
                     onCreate={() => openCreate(sala, d, "tutto_giorno")}
                     onDelete={handleDelete}
