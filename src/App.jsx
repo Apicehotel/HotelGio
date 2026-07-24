@@ -1384,7 +1384,14 @@ function PlanningSale({ user, onClose, onFlash }) {
   const days = Array.from({ length: viewCfg.days }, (_, i) =>
     addDaysP(anchor, i),
   );
-  const gridCols = `120px repeat(${days.length}, minmax(126px,1fr))`;
+  // I giorni vengono divisi in file da 4: su telefono la tabella resta
+  // leggibile senza scorrere in orizzontale.
+  const CHUNK = 4;
+  const dayChunks = [];
+  for (let i = 0; i < days.length; i += CHUNK)
+    dayChunks.push(days.slice(i, i + CHUNK));
+  const colMin = days.length === 1 ? 200 : 66;
+  const salaCol = days.length === 1 ? 120 : 84;
 
   const prev = () => setAnchor((a) => addDaysP(a, -viewCfg.days));
   const next = () => setAnchor((a) => addDaysP(a, viewCfg.days));
@@ -1478,12 +1485,17 @@ function PlanningSale({ user, onClose, onFlash }) {
           ›
         </button>
       </div>
-      <div
+      {dayChunks.map((chunkDays, ci) => {
+        const gridCols = `${salaCol}px repeat(${chunkDays.length}, minmax(${colMin}px,1fr))`;
+        return (
+        <div
+        key={ci}
         style={{
           overflowX: "auto",
           border: "1px solid #E4E0D6",
           borderRadius: 12,
           background: "#fff",
+          marginBottom: ci < dayChunks.length - 1 ? 10 : 0,
         }}
       >
         <div style={{ display: "grid", gridTemplateColumns: gridCols }}>
@@ -1496,7 +1508,7 @@ function PlanningSale({ user, onClose, onFlash }) {
               zIndex: 1,
             }}
           />
-          {days.map((d) => {
+          {chunkDays.map((d) => {
             const isToday = fmtISO(d) === fmtISO(new Date());
             return (
               <div
@@ -1519,6 +1531,11 @@ function PlanningSale({ user, onClose, onFlash }) {
                 ...planningHeadCellSt,
                 textAlign: "left",
                 fontWeight: 700,
+                fontSize: 10.5,
+                lineHeight: 1.25,
+                wordBreak: "break-word",
+                display: "flex",
+                alignItems: "center",
                 position: "sticky",
                 left: 0,
                 background: "#fff",
@@ -1528,7 +1545,7 @@ function PlanningSale({ user, onClose, onFlash }) {
             >
               {sala}
             </div>
-            {days.map((d) => {
+            {chunkDays.map((d) => {
               const dateStr = fmtISO(d);
               const list = bookingsFor(sala, dateStr);
               const full = list.find((b) => b.shift === "tutto_giorno");
@@ -1574,6 +1591,8 @@ function PlanningSale({ user, onClose, onFlash }) {
           </div>
         ))}
       </div>
+        );
+      })}
       {!canEdit && (
         <div style={{ marginTop: 12, fontSize: 12, color: "#5C645E" }}>
           Sola visualizzazione.
