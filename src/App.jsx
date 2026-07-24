@@ -1193,6 +1193,7 @@ const SALE_DEF = [
   { name: "Trumpet 1+2", parts: ["t1", "t2"] },
   { name: "Trumpet 2+3", parts: ["t2", "t3"] },
   { name: "Trumpet 3+4", parts: ["t3", "t4"] },
+  { name: "Trumpet 1+2+3", parts: ["t1", "t2", "t3"] },
   { name: "Trumpet 2+3+4", parts: ["t2", "t3", "t4"] },
   { name: "Trumpet 1+2+3+4", parts: ["t1", "t2", "t3", "t4"] },
   { name: "Sax 1", parts: ["s1"] },
