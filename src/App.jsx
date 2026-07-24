@@ -1216,6 +1216,25 @@ const saleInConflitto = (a, b) => {
   const pb = SALA_PARTS[b] || [];
   return pa.some((x) => pb.includes(x));
 };
+// Raggruppa le sale in famiglie: Trumpet e Sax hanno le combinazioni,
+// le altre sono singole. Serve al form: scegli la famiglia e appaiono le combo.
+const SALA_FAMILIES = (() => {
+  const order = [];
+  const map = {};
+  for (const s of SALE_DEF) {
+    const fam = s.name.startsWith("Trumpet")
+      ? "Trumpet"
+      : s.name.startsWith("Sax")
+        ? "Sax"
+        : s.name;
+    if (!map[fam]) {
+      map[fam] = [];
+      order.push(fam);
+    }
+    map[fam].push(s.name);
+  }
+  return order.map((fam) => ({ fam, rooms: map[fam] }));
+})();
 // colori dei turni, come nel planning cartaceo
 const SHIFT_COLORS = {
   mattina: { bg: "#E7EFFB", border: "#BBD1F0", fg: "#1D4ED8" },
@@ -1248,13 +1267,6 @@ const startOfDayP = (d) => {
 const dayLabelP = (d) =>
   `${WD_IT[d.getDay()]} ${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
 
-const planningHeadCellSt = {
-  padding: "8px 6px",
-  fontSize: 11,
-  textAlign: "center",
-  color: "#1B2420",
-  borderBottom: "1px solid #E4E0D6",
-};
 const planningNavBtnSt = {
   padding: "9px 14px",
   borderRadius: 10,
@@ -1266,172 +1278,158 @@ const planningNavBtnSt = {
   cursor: "pointer",
 };
 
-const planningPillBaseSt = {
-  display: "flex",
-  alignItems: "center",
-  gap: 4,
-  padding: "5px 6px",
-  borderRadius: 7,
-  fontSize: 10.5,
-  lineHeight: 1.25,
-  minHeight: 30,
-};
 
-function SlotPill({
-  label,
-  shift,
-  booking,
-  blocked,
-  occupiedBy,
-  canEdit,
-  onCreate,
-  onDelete,
-}) {
-  // occupata da una sala combinata che usa gli stessi spazi
-  if (!booking && occupiedBy) {
-    return (
-      <div
-        style={{
-          ...planningPillBaseSt,
-          background: "#F5F3EE",
-          border: "1px dashed #D9D3C4",
-          color: "#8A8578",
-        }}
-        title={"Occupata da " + occupiedBy.room + " (" + occupiedBy.client + ")"}
-      >
-        <span style={{ fontWeight: 700, opacity: 0.85 }}>{label}</span>
-        <span
-          style={{
-            flex: 1,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            fontStyle: "italic",
-          }}
-        >
-          {occupiedBy.room}
-        </span>
-      </div>
-    );
-  }
-  if (blocked) {
-    return (
-      <div
-        style={{
-          ...planningPillBaseSt,
-          background: "#F0EEE7",
-          border: "1px solid #E4E0D6",
-          color: "#B5AF9E",
-        }}
-      >
-        <span style={{ fontWeight: 700, opacity: 0.85 }}>{label}</span>
-        <span>—</span>
-      </div>
-    );
-  }
-  if (booking) {
-    return (
-      <div
-        style={{
-          ...planningPillBaseSt,
-          background: (SHIFT_COLORS[booking.shift] || SHIFT_COLORS.tutto_giorno).bg,
-          border:
-            "1px solid " +
-            (SHIFT_COLORS[booking.shift] || SHIFT_COLORS.tutto_giorno).border,
-          color: (SHIFT_COLORS[booking.shift] || SHIFT_COLORS.tutto_giorno).fg,
-        }}
-      >
-        <span style={{ fontWeight: 700, opacity: 0.85 }}>{label}</span>
-        <span
-          style={{
-            flex: 1,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-          title={booking.client}
-        >
-          {booking.client}
-        </span>
-        {canEdit && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(booking);
-            }}
-            title="Elimina prenotazione"
-            style={{
-              border: "none",
-              background: "transparent",
-              color: "#B23A2E",
-              cursor: "pointer",
-              padding: 2,
-              display: "grid",
-              placeItems: "center",
-              flexShrink: 0,
-            }}
-          >
-            {I.trash}
-          </button>
-        )}
-      </div>
-    );
-  }
-  return (
-    <div
-      onClick={canEdit ? onCreate : undefined}
-      style={{
-        ...planningPillBaseSt,
-        background: "#E6F2EB",
-        border: "1px solid #bfe2cf",
-        color: "#0E5C49",
-        cursor: canEdit ? "pointer" : "default",
-      }}
-    >
-      <span style={{ fontWeight: 700, opacity: 0.85 }}>{label}</span>
-      <span>Libero</span>
-    </div>
-  );
-}
-
-function SlotSheet({ sala, dateLabel, shift, onClose, onSave }) {
+function SlotSheet({ onClose, onSave, isBusy }) {
+  const [fam, setFam] = useState(null);
+  const [room, setRoom] = useState(null);
+  const [date, setDate] = useState(() => fmtISO(new Date()));
+  const [shift, setShift] = useState("mattina");
   const [client, setClient] = useState("");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const famObj = SALA_FAMILIES.find((f) => f.fam === fam);
+  const hasCombo = famObj && famObj.rooms.length > 1;
+
+  const pickFamily = (f) => {
+    setFam(f.fam);
+    setRoom(f.rooms.length === 1 ? f.rooms[0] : null);
+  };
+
+  const occupata = room && isBusy(room, date, shift);
+  const canSave = room && date && shift && client.trim() && !occupata && !busy;
+
   const save = async () => {
-    if (!client.trim() || busy) return;
+    if (!canSave) return;
     setBusy(true);
-    await onSave({ client: client.trim(), notes: notes.trim() });
+    await onSave({ room, date, shift, client: client.trim(), notes: notes.trim() });
     setBusy(false);
   };
+
+  const shiftBtns = [
+    ["mattina", "Mattina"],
+    ["pomeriggio", "Pomeriggio"],
+    ["tutto_giorno", "Tutto il giorno"],
+  ];
+
   return (
-    <Sheet onClose={onClose} title={`${sala} — ${SHIFT_LABELS[shift]}`}>
-      <div style={{ fontSize: 13, color: "#5C645E", marginBottom: 14 }}>
-        {dateLabel}
-      </div>
+    <Sheet onClose={onClose} title="Nuova prenotazione">
+      <Field label="Sala *">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+          {SALA_FAMILIES.map((f) => {
+            const sel = fam === f.fam;
+            return (
+              <button
+                key={f.fam}
+                onClick={() => pickFamily(f)}
+                style={{
+                  padding: "8px 13px",
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  border: "1.5px solid " + (sel ? "#0E5C49" : "#E4E0D6"),
+                  background: sel ? "#E6F2EB" : "#fff",
+                  color: sel ? "#0E5C49" : "#5C645E",
+                }}
+              >
+                {f.fam}
+              </button>
+            );
+          })}
+        </div>
+      </Field>
+      {hasCombo && (
+        <Field label="Combinazione *">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+            {famObj.rooms.map((r) => {
+              const sel = room === r;
+              const short = r.replace(fam + " ", "");
+              return (
+                <button
+                  key={r}
+                  onClick={() => setRoom(r)}
+                  style={{
+                    minWidth: 44,
+                    padding: "8px 12px",
+                    borderRadius: 10,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    border: "1.5px solid " + (sel ? "#0E5C49" : "#E4E0D6"),
+                    background: sel ? "#0E5C49" : "#fff",
+                    color: sel ? "#fff" : "#5C645E",
+                  }}
+                >
+                  {short}
+                </button>
+              );
+            })}
+          </div>
+        </Field>
+      )}
+      <Field label="Data *">
+        <input
+          type="date"
+          style={inputSt}
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
+      </Field>
+      <Field label="Turno *">
+        <div style={{ display: "flex", gap: 7 }}>
+          {shiftBtns.map(([k, l]) => {
+            const c = SHIFT_COLORS[k];
+            const sel = shift === k;
+            return (
+              <button
+                key={k}
+                onClick={() => setShift(k)}
+                style={{
+                  flex: 1,
+                  padding: "10px 6px",
+                  borderRadius: 10,
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  border: "1.5px solid " + (sel ? c.fg : "#E4E0D6"),
+                  background: sel ? c.bg : "#fff",
+                  color: sel ? c.fg : "#5C645E",
+                }}
+              >
+                {l}
+              </button>
+            );
+          })}
+        </div>
+      </Field>
+      {occupata && (
+        <div style={{ fontSize: 12.5, color: "#B23A2E", marginBottom: 10 }}>
+          {room} non e' disponibile in questo turno (sala gia' occupata o in
+          conflitto con una combinazione).
+        </div>
+      )}
       <Field label="Cliente *">
         <input
           style={inputSt}
           value={client}
           onChange={(e) => setClient(e.target.value)}
           placeholder="Nome cliente/azienda"
-          autoFocus
         />
       </Field>
       <Field label="Note (opzionale)">
         <textarea
-          style={{ ...inputSt, resize: "vertical", minHeight: 80 }}
+          style={{ ...inputSt, resize: "vertical", minHeight: 70 }}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
         />
       </Field>
-      <button style={ctaSt} disabled={!client.trim() || busy} onClick={save}>
+      <button style={{ ...ctaSt, opacity: canSave ? 1 : 0.5 }} disabled={!canSave} onClick={save}>
         {I.check} Prenota
       </button>
     </Sheet>
   );
 }
-
 function PlanningSale({ user, onClose, onFlash }) {
   const canEdit =
     user.role === "direttore_congressi" || user.role === "sviluppatore";
@@ -1461,56 +1459,36 @@ function PlanningSale({ user, onClose, onFlash }) {
   const days = Array.from({ length: viewCfg.days }, (_, i) =>
     addDaysP(anchor, i),
   );
-  // I giorni vengono divisi in file da 4: su telefono la tabella resta
-  // leggibile senza scorrere in orizzontale.
-  const CHUNK = 4;
-  const dayChunks = [];
-  for (let i = 0; i < days.length; i += CHUNK)
-    dayChunks.push(days.slice(i, i + CHUNK));
-  const colMin = days.length === 1 ? 200 : 66;
-  const salaCol = days.length === 1 ? 120 : 84;
 
   const prev = () => setAnchor((a) => addDaysP(a, -viewCfg.days));
   const next = () => setAnchor((a) => addDaysP(a, viewCfg.days));
   const today = () => setAnchor(startOfDayP(new Date()));
 
-  // prenotazioni proprie della sala
-  const bookingsFor = (sala, dateStr) =>
-    prenotazioni.filter((p) => p.room === sala && p.date === dateStr);
-  // prenotazioni che rendono la sala indisponibile perche' su spazi condivisi
-  // (es. Trumpet 1+2 occupa anche Trumpet 1 e Trumpet 2)
-  const overlapFor = (sala, dateStr) =>
-    prenotazioni.filter(
+
+  // disponibilita' di una sala in un turno, considerando anche le combinazioni
+  // (es. Trumpet 1+2 rende occupate Trumpet 1 e Trumpet 2)
+  const isBusy = (sala, dateStr, shift) => {
+    const all = prenotazioni.filter(
       (p) =>
-        p.date === dateStr && p.room !== sala && saleInConflitto(p.room, sala),
+        p.date === dateStr &&
+        (p.room === sala || saleInConflitto(p.room, sala)),
     );
-
-  const conflict = (sala, dateStr, shift) => {
-    const list = bookingsFor(sala, dateStr);
-    if (shift === "tutto_giorno") return list.length > 0;
-    if (list.some((b) => b.shift === "tutto_giorno")) return true;
-    return list.some((b) => b.shift === shift);
+    if (shift === "tutto_giorno") return all.length > 0;
+    if (all.some((b) => b.shift === "tutto_giorno")) return true;
+    return all.some((b) => b.shift === shift);
   };
 
-  const openCreate = (sala, dateObj, shift) => {
-    if (!canEdit) return;
-    if (conflict(sala, fmtISO(dateObj), shift)) return;
-    setSelected({ sala, dateObj, shift });
-  };
-
-  const handleSave = async ({ client, notes }) => {
-    if (!selected) return;
-    const dateStr = fmtISO(selected.dateObj);
-    if (conflict(selected.sala, dateStr, selected.shift)) {
-      onFlash("Slot non più disponibile", false);
+  const handleSave = async ({ room, date, shift, client, notes }) => {
+    if (isBusy(room, date, shift)) {
+      onFlash("Sala non piu' disponibile in questo turno", false);
       setSelected(null);
       return;
     }
     const ok = await DB.savePrenotazione({
       id: newId(),
-      room: selected.sala,
-      date: dateStr,
-      shift: selected.shift,
+      room,
+      date,
+      shift,
       client,
       notes,
       createdBy: user.name,
@@ -1561,146 +1539,199 @@ function PlanningSale({ user, onClose, onFlash }) {
         style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}
       >
         <button onClick={prev} style={planningNavBtnSt}>
-          ‹
+          \u2039
         </button>
         <button onClick={today} style={{ ...planningNavBtnSt, flex: 1 }}>
           Oggi
         </button>
         <button onClick={next} style={planningNavBtnSt}>
-          ›
+          \u203a
         </button>
       </div>
-      {dayChunks.map((chunkDays, ci) => {
-        const gridCols = `${salaCol}px repeat(${chunkDays.length}, minmax(${colMin}px,1fr))`;
-        return (
-        <div
-        key={ci}
-        style={{
-          overflowX: "auto",
-          border: "1px solid #E4E0D6",
-          borderRadius: 12,
-          background: "#fff",
-          marginBottom: ci < dayChunks.length - 1 ? 10 : 0,
-        }}
-      >
-        <div style={{ display: "grid", gridTemplateColumns: gridCols }}>
-          <div
-            style={{
-              ...planningHeadCellSt,
-              position: "sticky",
-              left: 0,
-              background: "#fff",
-              zIndex: 1,
-            }}
-          />
-          {chunkDays.map((d) => {
-            const isToday = fmtISO(d) === fmtISO(new Date());
-            return (
-              <div
-                key={+d}
-                style={{
-                  ...planningHeadCellSt,
-                  background: isToday ? "#F0EAD8" : "#FBFAF7",
-                  fontWeight: 700,
-                }}
-              >
-                {dayLabelP(d)}
-              </div>
-            );
-          })}
-        </div>
-        {SALE_CONGRESSI.map((sala) => (
-          <div key={sala} style={{ display: "grid", gridTemplateColumns: gridCols }}>
-            <div
+
+      {/* legenda turni */}
+      <div style={{ display: "flex", gap: 14, marginBottom: 14, flexWrap: "wrap" }}>
+        {[
+          ["mattina", "Mattina"],
+          ["pomeriggio", "Pomeriggio"],
+          ["tutto_giorno", "Tutto il giorno"],
+        ].map(([k, l]) => (
+          <div key={k} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span
               style={{
-                ...planningHeadCellSt,
-                textAlign: "left",
-                fontWeight: 700,
-                fontSize: 10.5,
-                lineHeight: 1.25,
-                wordBreak: "break-word",
-                display: "flex",
-                alignItems: "center",
-                position: "sticky",
-                left: 0,
-                background: "#fff",
-                zIndex: 1,
-                borderTop: "1px solid #F0EEE7",
+                width: 12,
+                height: 12,
+                borderRadius: 3,
+                background: SHIFT_COLORS[k].bg,
+                border: "1px solid " + SHIFT_COLORS[k].border,
               }}
-            >
-              {sala}
-            </div>
-            {chunkDays.map((d) => {
-              const dateStr = fmtISO(d);
-              const list = bookingsFor(sala, dateStr);
-              const full = list.find((b) => b.shift === "tutto_giorno");
-              const morning = list.find((b) => b.shift === "mattina");
-              const afternoon = list.find((b) => b.shift === "pomeriggio");
-              // occupazioni indirette: sale combinate che usano gli stessi spazi
-              const ov = overlapFor(sala, dateStr);
-              const ovFull = ov.find((b) => b.shift === "tutto_giorno");
-              const ovMorning = ov.find((b) => b.shift === "mattina");
-              const ovAfternoon = ov.find((b) => b.shift === "pomeriggio");
-              return (
-                <div
-                  key={dateStr}
-                  style={{
-                    padding: 6,
-                    borderTop: "1px solid #F0EEE7",
-                    borderLeft: "1px solid #F0EEE7",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 4,
-                  }}
-                >
-                  <SlotPill
-                    label="Matt."
-                    shift="mattina"
-                    booking={full || morning}
-                    occupiedBy={ovFull || ovMorning}
-                    canEdit={canEdit}
-                    onCreate={() => openCreate(sala, d, "mattina")}
-                    onDelete={handleDelete}
-                  />
-                  <SlotPill
-                    label="Pom."
-                    shift="pomeriggio"
-                    booking={full || afternoon}
-                    occupiedBy={ovFull || ovAfternoon}
-                    canEdit={canEdit}
-                    onCreate={() => openCreate(sala, d, "pomeriggio")}
-                    onDelete={handleDelete}
-                  />
-                  <SlotPill
-                    label="Giornata"
-                    shift="tutto_giorno"
-                    booking={full}
-                    blocked={!full && (!!morning || !!afternoon)}
-                    occupiedBy={ovFull || ovMorning || ovAfternoon}
-                    canEdit={canEdit}
-                    onCreate={() => openCreate(sala, d, "tutto_giorno")}
-                    onDelete={handleDelete}
-                  />
-                </div>
-              );
-            })}
+            />
+            <span style={{ fontSize: 12, color: "#5C645E" }}>{l}</span>
           </div>
         ))}
       </div>
-        );
-      })}
+
+      {/* agenda: un blocco per giorno, con le sole prenotazioni */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+          paddingBottom: canEdit ? 84 : 12,
+        }}
+      >
+        {days.map((d) => {
+          const dateStr = fmtISO(d);
+          const isToday = dateStr === fmtISO(new Date());
+          const dayBookings = prenotazioni
+            .filter((b) => b.date === dateStr)
+            .sort((a, b) => {
+              const ra = SALE_CONGRESSI.indexOf(a.room);
+              const rb = SALE_CONGRESSI.indexOf(b.room);
+              return ra - rb;
+            });
+          return (
+            <div
+              key={dateStr}
+              style={{
+                border: "1px solid #E4E0D6",
+                borderRadius: 12,
+                background: "#fff",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  padding: "9px 12px",
+                  background: isToday ? "#E6F2EB" : "#FBFAF7",
+                  borderBottom: "1px solid #F0EEE7",
+                  fontWeight: 700,
+                  fontSize: 13.5,
+                  color: isToday ? "#0E5C49" : "#1B2420",
+                  display: "flex",
+                  justifyContent: "space-between",
+                }}
+              >
+                <span>{dayLabelP(d)}</span>
+                {isToday && (
+                  <span style={{ fontSize: 11, fontWeight: 700 }}>OGGI</span>
+                )}
+              </div>
+              {dayBookings.length === 0 ? (
+                <div
+                  style={{
+                    padding: "12px",
+                    fontSize: 12.5,
+                    color: "#B5AF9E",
+                    fontStyle: "italic",
+                  }}
+                >
+                  Nessuna prenotazione
+                </div>
+              ) : (
+                <div style={{ padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                  {dayBookings.map((b) => {
+                    const c = SHIFT_COLORS[b.shift] || SHIFT_COLORS.tutto_giorno;
+                    return (
+                      <div
+                        key={b.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "9px 10px",
+                          borderRadius: 9,
+                          background: c.bg,
+                          border: "1px solid " + c.border,
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 700, color: c.fg }}>
+                            {b.room}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 12.5,
+                              color: "#1B2420",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {b.client}
+                            {b.notes ? " \u00b7 " + b.notes : ""}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: c.fg, whiteSpace: "nowrap" }}>
+                          {SHIFT_LABELS[b.shift]}
+                        </span>
+                        {canEdit && (
+                          <button
+                            onClick={() => handleDelete(b)}
+                            title="Elimina prenotazione"
+                            style={{
+                              border: "none",
+                              background: "transparent",
+                              color: "#B23A2E",
+                              cursor: "pointer",
+                              padding: 2,
+                              display: "grid",
+                              placeItems: "center",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {I.trash}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
       {!canEdit && (
         <div style={{ marginTop: 12, fontSize: 12, color: "#5C645E" }}>
           Sola visualizzazione.
         </div>
       )}
+
+      {canEdit && (
+        <button
+          onClick={() => setSelected(true)}
+          style={{
+            position: "fixed",
+            bottom: "calc(env(safe-area-inset-bottom, 0px) + 20px)",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "#0E5C49",
+            color: "#fff",
+            fontWeight: 700,
+            fontSize: 15,
+            padding: "14px 24px",
+            borderRadius: 999,
+            border: "none",
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+            boxShadow: "0 10px 30px -8px rgba(14,92,73,.6)",
+            zIndex: 65,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          {I.plus} Nuova prenotazione
+        </button>
+      )}
+
       {selected && (
         <SlotSheet
-          sala={selected.sala}
-          dateLabel={dayLabelP(selected.dateObj)}
-          shift={selected.shift}
           onClose={() => setSelected(null)}
           onSave={handleSave}
+          isBusy={isBusy}
         />
       )}
     </FullPage>
