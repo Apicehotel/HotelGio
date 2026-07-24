@@ -889,6 +889,63 @@ function CameraZonaField({
   );
 }
 
+// Pagina a schermo intero: usata per le sezioni che meritano spazio (es. Planning Sale)
+function FullPage({ onClose, title, children }) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 60,
+        background: "#F4F2ED",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <div
+        style={{
+          background: "#0E5C49",
+          color: "#fff",
+          padding: "calc(env(safe-area-inset-top, 0px) + 12px) 14px 12px",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          flexShrink: 0,
+        }}
+      >
+        <button
+          onClick={onClose}
+          aria-label="Torna indietro"
+          style={{
+            background: "rgba(255,255,255,.14)",
+            border: "none",
+            color: "#fff",
+            width: 34,
+            height: 34,
+            borderRadius: 9,
+            display: "grid",
+            placeItems: "center",
+            cursor: "pointer",
+          }}
+        >
+          {I.back}
+        </button>
+        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{title}</h2>
+      </div>
+      <div
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
+          padding: "14px 16px calc(env(safe-area-inset-bottom, 0px) + 28px)",
+        }}
+      >
+        <div style={{ maxWidth: 760, margin: "0 auto" }}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
 function Sheet({ onClose, title, children }) {
   return (
     <div
@@ -1386,7 +1443,7 @@ function PlanningSale({ user, onClose, onFlash }) {
   };
 
   return (
-    <Sheet onClose={onClose} title="Planning Sale">
+    <FullPage onClose={onClose} title="Planning Sale">
       <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
         {PLANNING_VIEWS.map((v) => (
           <button
@@ -1531,7 +1588,7 @@ function PlanningSale({ user, onClose, onFlash }) {
           onSave={handleSave}
         />
       )}
-    </Sheet>
+    </FullPage>
   );
 }
 
