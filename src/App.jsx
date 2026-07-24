@@ -1539,13 +1539,13 @@ function PlanningSale({ user, onClose, onFlash }) {
         style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}
       >
         <button onClick={prev} style={planningNavBtnSt}>
-          \u2039
+          {"‹"}
         </button>
         <button onClick={today} style={{ ...planningNavBtnSt, flex: 1 }}>
           Oggi
         </button>
         <button onClick={next} style={planningNavBtnSt}>
-          \u203a
+          {"›"}
         </button>
       </div>
 
