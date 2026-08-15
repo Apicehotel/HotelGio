@@ -653,6 +653,14 @@ export function isGpsCheckinEnabled() {
   return localStorage.getItem(GPS_PREF_KEY) !== "off";
 }
 
+// "Sono in struttura" si spegne da solo dopo 7h20m dall'attivazione manuale
+// (durata del turno): evita che un manutentore resti segnato in struttura a
+// fine turno - e quindi visibile come presente alla direzione - per essersi
+// dimenticato di spegnerlo. La scadenza si calcola da in_struttura_dal (gia'
+// salvato nel DB), quindi non serve modificare il database: al caricamento,
+// se la presenza manuale e' piu' vecchia della soglia, la si spegne.
+const PRESENZA_AUTO_OFF_MS = (7 * 60 + 20) * 60 * 1000; // 7h20m
+
 export function InStrutturaToggle({ user, refreshSignal }) {
   const [dentro, setDentro] = useState(null); // null = non ancora caricato
   const [busy, setBusy] = useState(false);
@@ -660,11 +668,32 @@ export function InStrutturaToggle({ user, refreshSignal }) {
 
   useEffect(() => {
     let cancelled = false;
+    let timer;
     DB.loadMiaPresenza(user.name).then((r) => {
-      if (!cancelled) setDentro(!!r?.in_struttura);
+      if (cancelled) return;
+      const attivo = !!r?.in_struttura;
+      // Scadenza solo per il check-in manuale: il GPS si gestisce da solo.
+      if (attivo && r?.in_struttura_via === "manuale" && r?.in_struttura_dal) {
+        const scadenza = new Date(r.in_struttura_dal).getTime() + PRESENZA_AUTO_OFF_MS;
+        const restante = scadenza - Date.now();
+        if (restante <= 0) {
+          // Turno gia' scaduto: spegni nel DB e mostra spento.
+          DB.setInStrutturaManuale(user.name, false);
+          setDentro(false);
+          return;
+        }
+        // Turno ancora in corso: programma lo spegnimento allo scadere,
+        // cosi' si spegne da solo anche se l'app resta aperta.
+        timer = setTimeout(() => {
+          DB.setInStrutturaManuale(user.name, false);
+          setDentro(false);
+        }, restante);
+      }
+      setDentro(attivo);
     });
     return () => {
       cancelled = true;
+      if (timer) clearTimeout(timer);
     };
   }, [user.name, refreshSignal]);
 
