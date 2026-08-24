@@ -6592,8 +6592,14 @@ function Detail({
     needT;
   // Il manutentore non puo' contattare il tecnico (vedi sotto), ma puo'
   // comunque scrivere/modificare la nota aggiuntiva che verra' allegata al
-  // messaggio quando reception/direzione lo contattera'.
-  const canEditNotaTecnico = user.role === "manutentore" && needT;
+  // messaggio quando reception/direzione lo contattera'. Vale sia quando ha
+  // gia' chiesto di contattare un tecnico (status ancora "todo") sia quando
+  // il tecnico e' gia' stato assegnato (status "tecnico").
+  const canEditNotaTecnico =
+    user.role === "manutentore" &&
+    !it.tecnicoMsgSid &&
+    !calledBy &&
+    (needT || (it.tecnicoAskedBy && it.status === "todo"));
   const canReqT =
     (user.role === "sviluppatore" ||
       user.role === "direzione" ||
@@ -7010,6 +7016,55 @@ function Detail({
             <div style={{ fontSize: 11, color: "#92400E" }}>
               {fmt(it.tecnicoAskedAt)}
             </div>
+          </>,
+        )}
+      {canEditNotaTecnico &&
+        it.tecnicoAskedBy &&
+        it.status === "todo" &&
+        blk(
+          "#FFFBEB",
+          "#FCD34D",
+          <>
+            {dlbl("Nota per il tecnico", "#92400E")}
+            <div
+              style={{
+                fontSize: 12,
+                color: "#78350F",
+                marginBottom: 8,
+                lineHeight: 1.4,
+              }}
+            >
+              Verra' allegata al messaggio quando reception/direzione
+              contattera' il tecnico.
+            </div>
+            <textarea
+              placeholder="Nota aggiuntiva per il tecnico (facoltativa)"
+              value={notaExtra}
+              onChange={(e) => setNotaExtra(e.target.value)}
+              style={{
+                width: "100%",
+                minHeight: 60,
+                resize: "vertical",
+                fontSize: 13,
+                padding: "8px 10px",
+                borderRadius: 10,
+                border: "1.5px solid #FCD34D",
+                fontFamily: "inherit",
+                boxSizing: "border-box",
+                marginBottom: 8,
+              }}
+            />
+            <button
+              onClick={saveNotaExtra}
+              disabled={savingNota}
+              style={{
+                ...ctaSt,
+                background: "#D97706",
+                opacity: savingNota ? 0.6 : 1,
+              }}
+            >
+              {I.check} {savingNota ? "Salvataggio..." : "Salva nota"}
+            </button>
           </>,
         )}
       {needT &&
