@@ -6728,6 +6728,7 @@ function Detail({
   const [checkingStato, setCheckingStato] = useState(false);
   const [showManualArrivo, setShowManualArrivo] = useState(false);
   const [manualArrivo, setManualArrivo] = useState("");
+  const [notaExtra, setNotaExtra] = useState("");
   const sendTecnicoWa = async () => {
     if (!it.tecnicoTelefono) {
       onFlash("Manca il numero di telefono del tecnico", false);
@@ -6735,6 +6736,9 @@ function Detail({
     }
     setSendingWa(true);
     try {
+      const problemaCompleto = [it.notes || "", notaExtra.trim()]
+        .filter(Boolean)
+        .join("\n\n");
       const res = await fetch(
         "https://jmhzmwyolxzacjunfwcq.supabase.co/functions/v1/send-tecnico-whatsapp",
         {
@@ -6744,7 +6748,7 @@ function Detail({
             segnalazioneId: it.id,
             telefono: it.tecnicoTelefono,
             camera: it.room,
-            problema: it.notes || "",
+            problema: problemaCompleto,
           }),
         },
       );
@@ -7194,6 +7198,22 @@ function Detail({
                       {I.image} Apri foto (tieni premuto per salvarla)
                     </button>
                   )}
+                  <textarea
+                    placeholder="Nota aggiuntiva per il tecnico (facoltativa)"
+                    value={notaExtra}
+                    onChange={(e) => setNotaExtra(e.target.value)}
+                    style={{
+                      width: "100%",
+                      minHeight: 60,
+                      resize: "vertical",
+                      fontSize: 13,
+                      padding: "8px 10px",
+                      borderRadius: 10,
+                      border: "1.5px solid #FCD34D",
+                      fontFamily: "inherit",
+                      boxSizing: "border-box",
+                    }}
+                  />
                   <div style={{ display: "flex", gap: 7 }}>
                     <button
                       onClick={sendTecnicoWa}
