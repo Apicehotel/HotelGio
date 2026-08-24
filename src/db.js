@@ -82,6 +82,7 @@ function itemFromRow(r) {
       ? new Date(r.tecnico_arrivo_at).getTime()
       : null,
     tecnicoSollecitoInviato: r.tecnico_sollecito_inviato,
+    tecnicoNotaExtra: r.tecnico_nota_extra,
   };
 }
 function itemToRow(it) {
@@ -137,6 +138,7 @@ function itemToRow(it) {
     tecnico_arrivo_at: it.tecnicoArrivoAt
       ? new Date(it.tecnicoArrivoAt).toISOString()
       : null,
+    tecnico_nota_extra: it.tecnicoNotaExtra || null,
   };
 }
 

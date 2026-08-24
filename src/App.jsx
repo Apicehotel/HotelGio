@@ -6590,6 +6590,10 @@ function Detail({
       user.role === "sviluppatore" ||
       user.role === "reception") &&
     needT;
+  // Il manutentore non puo' contattare il tecnico (vedi sotto), ma puo'
+  // comunque scrivere/modificare la nota aggiuntiva che verra' allegata al
+  // messaggio quando reception/direzione lo contattera'.
+  const canEditNotaTecnico = user.role === "manutentore" && needT;
   const canReqT =
     (user.role === "sviluppatore" ||
       user.role === "direzione" ||
@@ -6728,7 +6732,18 @@ function Detail({
   const [checkingStato, setCheckingStato] = useState(false);
   const [showManualArrivo, setShowManualArrivo] = useState(false);
   const [manualArrivo, setManualArrivo] = useState("");
-  const [notaExtra, setNotaExtra] = useState("");
+  const [notaExtra, setNotaExtra] = useState(it.tecnicoNotaExtra || "");
+  const [savingNota, setSavingNota] = useState(false);
+  const saveNotaExtra = async () => {
+    setSavingNota(true);
+    try {
+      await onSave({ ...it, tecnicoNotaExtra: notaExtra.trim() });
+      onFlash("Nota salvata ✓");
+    } catch {
+      onFlash("Errore nel salvataggio della nota", false);
+    }
+    setSavingNota(false);
+  };
   const sendTecnicoWa = async () => {
     if (!it.tecnicoTelefono) {
       onFlash("Manca il numero di telefono del tecnico", false);
@@ -7179,7 +7194,7 @@ function Detail({
                 )}
               </>
             ) : (
-              canCall && (
+              (canCall || canEditNotaTecnico) && (
                 <div
                   style={{ display: "flex", flexDirection: "column", gap: 7 }}
                 >
@@ -7214,48 +7229,62 @@ function Detail({
                       boxSizing: "border-box",
                     }}
                   />
-                  <div style={{ display: "flex", gap: 7 }}>
+                  {canCall ? (
+                    <div style={{ display: "flex", gap: 7 }}>
+                      <button
+                        onClick={sendTecnicoWa}
+                        disabled={sendingWa || !it.tecnicoTelefono}
+                        style={{
+                          flex: 1,
+                          background: "#25D366",
+                          color: "#fff",
+                          fontWeight: 700,
+                          fontSize: 14,
+                          padding: 14,
+                          borderRadius: 12,
+                          border: "none",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 8,
+                          opacity: sendingWa ? 0.6 : 1,
+                        }}
+                      >
+                        <svg
+                          width="17"
+                          height="17"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path d="M17.6 6.32A7.85 7.85 0 0 0 12.05 4a7.94 7.94 0 0 0-6.9 11.9L4 20l4.21-1.1a7.93 7.93 0 0 0 3.8.97h0a7.95 7.95 0 0 0 5.59-13.55zm-5.55 12.2h0a6.6 6.6 0 0 1-3.36-.92l-.24-.14-2.5.65.67-2.44-.16-.25a6.6 6.6 0 1 1 12.27-3.5 6.56 6.56 0 0 1-6.68 6.6zm3.6-4.93c-.2-.1-1.17-.58-1.35-.64s-.31-.1-.45.1-.52.64-.64.78-.23.15-.43.05a5.42 5.42 0 0 1-1.6-.98 5.99 5.99 0 0 1-1.1-1.37c-.12-.2 0-.3.09-.4s.2-.23.3-.35a1.4 1.4 0 0 0 .2-.33.36.36 0 0 0 0-.35c0-.1-.45-1.08-.62-1.48s-.33-.33-.45-.33-.25 0-.38 0a.74.74 0 0 0-.53.25 2.23 2.23 0 0 0-.7 1.66 3.88 3.88 0 0 0 .82 2.05 8.86 8.86 0 0 0 3.39 3 11.5 11.5 0 0 0 1.13.42 2.7 2.7 0 0 0 1.25.08 2.04 2.04 0 0 0 1.34-.94 1.65 1.65 0 0 0 .12-.94c-.05-.1-.18-.15-.39-.25z" />
+                        </svg>{" "}
+                        {sendingWa ? "Invio..." : "Contatta tecnico"}
+                      </button>
+                      <button
+                        onClick={markCalled}
+                        style={{ ...ctaSt, background: "#D97706", flex: 1 }}
+                      >
+                        {I.phone} Ho chiamato
+                      </button>
+                    </div>
+                  ) : (
                     <button
-                      onClick={sendTecnicoWa}
-                      disabled={sendingWa || !it.tecnicoTelefono}
+                      onClick={saveNotaExtra}
+                      disabled={savingNota}
                       style={{
-                        flex: 1,
-                        background: "#25D366",
-                        color: "#fff",
-                        fontWeight: 700,
-                        fontSize: 14,
-                        padding: 14,
-                        borderRadius: 12,
-                        border: "none",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 8,
-                        opacity: sendingWa ? 0.6 : 1,
+                        ...ctaSt,
+                        background: "#D97706",
+                        opacity: savingNota ? 0.6 : 1,
                       }}
                     >
-                      <svg
-                        width="17"
-                        height="17"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path d="M17.6 6.32A7.85 7.85 0 0 0 12.05 4a7.94 7.94 0 0 0-6.9 11.9L4 20l4.21-1.1a7.93 7.93 0 0 0 3.8.97h0a7.95 7.95 0 0 0 5.59-13.55zm-5.55 12.2h0a6.6 6.6 0 0 1-3.36-.92l-.24-.14-2.5.65.67-2.44-.16-.25a6.6 6.6 0 1 1 12.27-3.5 6.56 6.56 0 0 1-6.68 6.6zm3.6-4.93c-.2-.1-1.17-.58-1.35-.64s-.31-.1-.45.1-.52.64-.64.78-.23.15-.43.05a5.42 5.42 0 0 1-1.6-.98 5.99 5.99 0 0 1-1.1-1.37c-.12-.2 0-.3.09-.4s.2-.23.3-.35a1.4 1.4 0 0 0 .2-.33.36.36 0 0 0 0-.35c0-.1-.45-1.08-.62-1.48s-.33-.33-.45-.33-.25 0-.38 0a.74.74 0 0 0-.53.25 2.23 2.23 0 0 0-.7 1.66 3.88 3.88 0 0 0 .82 2.05 8.86 8.86 0 0 0 3.39 3 11.5 11.5 0 0 0 1.13.42 2.7 2.7 0 0 0 1.25.08 2.04 2.04 0 0 0 1.34-.94 1.65 1.65 0 0 0 .12-.94c-.05-.1-.18-.15-.39-.25z" />
-                      </svg>{" "}
-                      {sendingWa ? "Invio..." : "Contatta tecnico"}
+                      {I.check} {savingNota ? "Salvataggio..." : "Salva nota"}
                     </button>
-                    <button
-                      onClick={markCalled}
-                      style={{ ...ctaSt, background: "#D97706", flex: 1 }}
-                    >
-                      {I.phone} Ho chiamato
-                    </button>
-                  </div>
+                  )}
                 </div>
               )
             )}
-            {!canCall && !calledBy && !it.tecnicoMsgSid && (
+            {!canCall && !canEditNotaTecnico && !calledBy && !it.tecnicoMsgSid && (
               <div style={{ fontSize: 13, color: "#92400E" }}>
                 In attesa che direzione/reception chiami {it.tecnicoNome}.
               </div>
