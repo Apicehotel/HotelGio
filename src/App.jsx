@@ -1247,11 +1247,26 @@ const planningNavBtnSt = {
 };
 
 
-function SlotSheet({ onClose, onSave, isBusy }) {
+// Genera l'elenco delle date (YYYY-MM-DD) tra from e to inclusi.
+function dateRangeP(from, to) {
+  if (!from || !to) return [];
+  const start = new Date(from + "T00:00:00");
+  const end = new Date(to + "T00:00:00");
+  if (end < start) return [];
+  const out = [];
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    out.push(fmtISO(d));
+  }
+  return out;
+}
+
+function SlotSheet({ onClose, onSave, isBusy, initialDate }) {
   const [fam, setFam] = useState(null);
   const [room, setRoom] = useState(null);
-  const [date, setDate] = useState(() => fmtISO(new Date()));
-  const [shift, setShift] = useState("mattina");
+  const [dateFrom, setDateFrom] = useState(() => initialDate || fmtISO(new Date()));
+  const [dateTo, setDateTo] = useState(() => initialDate || fmtISO(new Date()));
+  // turno per ciascun giorno dell'intervallo: { "2026-08-20": "mattina", ... }
+  const [shiftByDay, setShiftByDay] = useState({});
   const [client, setClient] = useState("");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
@@ -1264,13 +1279,33 @@ function SlotSheet({ onClose, onSave, isBusy }) {
     setRoom(f.rooms.length === 1 ? f.rooms[0] : null);
   };
 
-  const occupata = room && isBusy(room, date, shift);
-  const canSave = room && date && shift && client.trim() && !occupata && !busy;
+  const days = dateRangeP(dateFrom, dateTo);
+  // Ogni giorno nuovo nell'intervallo parte con "tutto_giorno"; i giorni già
+  // impostati mantengono la scelta fatta (così cambiare Al non resetta tutto).
+  useEffect(() => {
+    setShiftByDay((prev) => {
+      const next = {};
+      days.forEach((d) => { next[d] = prev[d] || "tutto_giorno"; });
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFrom, dateTo]);
+
+  const setDayShift = (day, shift) => setShiftByDay((prev) => ({ ...prev, [day]: shift }));
+
+  // Giorni in conflitto (sala già occupata in quel turno)
+  const conflicts = room ? days.filter((d) => isBusy(room, d, shiftByDay[d])) : [];
+  const canSave = room && days.length > 0 && client.trim() && conflicts.length === 0 && !busy;
 
   const save = async () => {
     if (!canSave) return;
     setBusy(true);
-    await onSave({ room, date, shift, client: client.trim(), notes: notes.trim() });
+    await onSave({
+      room,
+      client: client.trim(),
+      notes: notes.trim(),
+      days: days.map((d) => ({ date: d, shift: shiftByDay[d] })),
+    });
     setBusy(false);
   };
 
@@ -1336,45 +1371,74 @@ function SlotSheet({ onClose, onSave, isBusy }) {
           </div>
         </Field>
       )}
-      <Field label="Data *">
-        <input
-          type="date"
-          style={inputSt}
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
-      </Field>
-      <Field label="Turno *">
-        <div style={{ display: "flex", gap: 7 }}>
-          {shiftBtns.map(([k, l]) => {
-            const c = SHIFT_COLORS[k];
-            const sel = shift === k;
-            return (
-              <button
-                key={k}
-                onClick={() => setShift(k)}
-                style={{
-                  flex: 1,
-                  padding: "10px 6px",
-                  borderRadius: 10,
-                  fontSize: 12.5,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  border: "1.5px solid " + (sel ? c.fg : "#E4E0D6"),
-                  background: sel ? c.bg : "#fff",
-                  color: sel ? c.fg : "#5C645E",
-                }}
-              >
-                {l}
-              </button>
-            );
-          })}
-        </div>
-      </Field>
-      {occupata && (
+      <div style={{ display: "flex", gap: 10 }}>
+        <Field label="Dal *" style={{ flex: 1 }}>
+          <input
+            type="date"
+            style={inputSt}
+            value={dateFrom}
+            onChange={(e) => {
+              const v = e.target.value;
+              setDateFrom(v);
+              if (dateTo < v) setDateTo(v);
+            }}
+          />
+        </Field>
+        <Field label="Al *" style={{ flex: 1 }}>
+          <input
+            type="date"
+            style={inputSt}
+            min={dateFrom}
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+          />
+        </Field>
+      </div>
+      {days.length > 0 && (
+        <Field label={days.length > 1 ? `Turno per giorno (${days.length} giorni) *` : "Turno *"}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {days.map((d) => {
+              const dayConflict = room && isBusy(room, d, shiftByDay[d]);
+              return (
+                <div key={d} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, minWidth: 78, color: dayConflict ? "#B23A2E" : "#2B2B28" }}>
+                    {new Date(d + "T00:00:00").toLocaleDateString("it-IT", { weekday: "short", day: "2-digit", month: "2-digit" })}
+                  </span>
+                  <div style={{ display: "flex", gap: 6, flex: 1 }}>
+                    {shiftBtns.map(([k, l]) => {
+                      const c = SHIFT_COLORS[k];
+                      const sel = shiftByDay[d] === k;
+                      return (
+                        <button
+                          key={k}
+                          onClick={() => setDayShift(d, k)}
+                          style={{
+                            flex: 1,
+                            padding: "8px 4px",
+                            borderRadius: 9,
+                            fontSize: 11.5,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            border: "1.5px solid " + (sel ? c.fg : "#E4E0D6"),
+                            background: sel ? c.bg : "#fff",
+                            color: sel ? c.fg : "#5C645E",
+                          }}
+                        >
+                          {l}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Field>
+      )}
+      {conflicts.length > 0 && (
         <div style={{ fontSize: 12.5, color: "#B23A2E", marginBottom: 10 }}>
-          {room} non e' disponibile in questo turno (sala gia' occupata o in
-          conflitto con una combinazione).
+          {room} non e' disponibile nei giorni evidenziati (sala gia' occupata o in
+          conflitto con una combinazione). Cambia turno o data per quei giorni.
         </div>
       )}
       <Field label="Cliente *">
@@ -1393,7 +1457,7 @@ function SlotSheet({ onClose, onSave, isBusy }) {
         />
       </Field>
       <button style={{ ...ctaSt, opacity: canSave ? 1 : 0.5 }} disabled={!canSave} onClick={save}>
-        {I.check} Prenota
+        {I.check} Prenota{days.length > 1 ? ` (${days.length} giorni)` : ""}
       </button>
     </Sheet>
   );
@@ -1446,27 +1510,36 @@ function PlanningSale({ user, onClose, onFlash }) {
     return all.some((b) => b.shift === shift);
   };
 
-  const handleSave = async ({ room, date, shift, client, notes }) => {
-    if (isBusy(room, date, shift)) {
-      onFlash("Sala non piu' disponibile in questo turno", false);
+  // days: [{date, shift}, ...] — una prenotazione per giorno, stesso client/note/room.
+  const handleSave = async ({ room, client, notes, days }) => {
+    // ricontrollo i conflitti al momento del salvataggio (potrebbero essere
+    // cambiati tra apertura del form e click su "Prenota")
+    const conflictDay = days.find(({ date, shift }) => isBusy(room, date, shift));
+    if (conflictDay) {
+      onFlash(`Sala non piu' disponibile il ${conflictDay.date}`, false);
       setSelected(null);
       return;
     }
-    const ok = await DB.savePrenotazione({
-      id: newId(),
-      room,
-      date,
-      shift,
-      client,
-      notes,
-      createdBy: user.name,
-      createdAt: Date.now(),
-    });
-    if (ok) {
-      onFlash("Prenotazione salvata ✓");
+    let allOk = true;
+    for (const { date, shift } of days) {
+      const ok = await DB.savePrenotazione({
+        id: newId(),
+        room,
+        date,
+        shift,
+        client,
+        notes,
+        createdBy: user.name,
+        createdAt: Date.now(),
+      });
+      if (!ok) allOk = false;
+    }
+    if (allOk) {
+      onFlash(days.length > 1 ? `Prenotazione salvata su ${days.length} giorni ✓` : "Prenotazione salvata ✓");
       await load();
     } else {
-      onFlash("Errore nel salvataggio", false);
+      onFlash("Errore nel salvataggio di una o più date", false);
+      await load();
     }
     setSelected(null);
   };
