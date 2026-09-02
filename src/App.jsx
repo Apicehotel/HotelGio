@@ -1371,8 +1371,9 @@ function SlotSheet({ onClose, onSave, isBusy, initialDate }) {
           </div>
         </Field>
       )}
-      <div style={{ display: "flex", gap: 10 }}>
-        <Field label="Dal *" style={{ flex: 1 }}>
+      <div style={{ display: "flex", gap: 16 }}>
+        <div style={{ flex: 1, marginBottom: 16 }}>
+          <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 7 }}>Dal *</label>
           <input
             type="date"
             style={inputSt}
@@ -1383,8 +1384,9 @@ function SlotSheet({ onClose, onSave, isBusy, initialDate }) {
               if (dateTo < v) setDateTo(v);
             }}
           />
-        </Field>
-        <Field label="Al *" style={{ flex: 1 }}>
+        </div>
+        <div style={{ flex: 1, marginBottom: 16 }}>
+          <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 7 }}>Al *</label>
           <input
             type="date"
             style={inputSt}
@@ -1392,7 +1394,7 @@ function SlotSheet({ onClose, onSave, isBusy, initialDate }) {
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
           />
-        </Field>
+        </div>
       </div>
       {days.length > 0 && (
         <Field label={days.length > 1 ? `Turno per giorno (${days.length} giorni) *` : "Turno *"}>
