@@ -1371,8 +1371,8 @@ function SlotSheet({ onClose, onSave, isBusy, initialDate }) {
           </div>
         </Field>
       )}
-      <div style={{ display: "flex", gap: 16 }}>
-        <div style={{ flex: 1, marginBottom: 16 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+        <div style={{ marginBottom: 16 }}>
           <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 7 }}>Dal *</label>
           <input
             type="date"
@@ -1385,7 +1385,7 @@ function SlotSheet({ onClose, onSave, isBusy, initialDate }) {
             }}
           />
         </div>
-        <div style={{ flex: 1, marginBottom: 16 }}>
+        <div style={{ marginBottom: 16 }}>
           <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 7 }}>Al *</label>
           <input
             type="date"
