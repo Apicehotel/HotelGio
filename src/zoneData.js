@@ -167,6 +167,8 @@ export const ZONES = {
     "office hall wine",
   ],
   "Lavanderia Wine": ["lavanderia", "stireria", "laundry"],
+  Cantina: [],
+  Gusto: [],
   "Risto Wine": ["risto wine", "ristorante wine", "sala ristorante wine"],
   "Sala Cravatte": ["sala cravatte", "cravatte"],
   "Sala Fontivegge": ["sala fontivegge", "fontivegge"],
@@ -181,6 +183,11 @@ export const ZONES = {
   "Office 4 Wine": ["quarto wine", "4 wine", "4wine", "ufficio quarto wine"],
   "Corridoio 4 Wine": [],
   "Centro Congressi": [],
+  Palestra: [],
+  "Corridoio Palestra": [],
+  "Scale Wine": [],
+  "Scale Jazz Piccole": [],
+  "Scale Jazz Grandi": [],
 };
 
 export const ZONE_NAMES = Object.keys(ZONES);
