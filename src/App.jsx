@@ -4829,10 +4829,16 @@ function NewPlanned({ user, tec, onClose, onSave, initial }) {
     // se il piano scelto non e' piu' valido per la categoria, azzera
     if (piano && !pianiDisponibili.some((pi) => pi.id === piano.id)) setPiano(null);
   }, [cat]);
-  // l'idromassaggio e' solo nelle camere pari
+  // Per Jazz: camere dispari, escluse 01 e 21, piu' la camera 02 di ogni piano.
+  const isCameraIdromassaggioJazz = (camera) => {
+    const numero = Number(camera);
+    if (!Number.isFinite(numero)) return false;
+    const finale = numero % 100;
+    return finale === 2 || (finale % 2 === 1 && finale !== 1 && finale !== 21);
+  };
   const camereDelPiano = piano
     ? cat === "idromassaggio"
-      ? piano.rooms.filter((r) => Number(r) % 2 === 0)
+      ? piano.rooms.filter(isCameraIdromassaggioJazz)
       : piano.rooms
     : [];
   // Extra Piani: solo i piani scelti da chi crea l'intervento, non tutti in automatico.
@@ -4999,7 +5005,7 @@ function NewPlanned({ user, tec, onClose, onSave, initial }) {
               {camereDelPiano.length} camere da spuntare · dalla{" "}
               {camereDelPiano[0]} alla{" "}
               {camereDelPiano[camereDelPiano.length - 1]}
-              {cat === "idromassaggio" && " (solo camere pari)"}
+              {cat === "idromassaggio" && " (dispari, escluse 01 e 21, piu' la 02)"}
             </div>
           )}
         </Field>
