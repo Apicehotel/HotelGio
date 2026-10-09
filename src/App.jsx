@@ -2055,6 +2055,9 @@ export default function App() {
     swipeAnim.current = setTimeout(() => setSwipeDir(null), 300);
   };
 
+  // Cambia a ogni ritorno in primo piano / ritorno online: forza la
+  // ricreazione del canale realtime (il websocket muore con l'app in background)
+  const [rtKey, setRtKey] = useState(0);
   useEffect(() => {
     if (!user) return;
     let mounted = true;
@@ -2095,10 +2098,51 @@ export default function App() {
           refreshUrgenze();
         },
       )
-      .subscribe();
+      .subscribe((status) => {
+        // canale caduto: ricrealo e ricarica subito i dati
+        if (
+          mounted &&
+          (status === "CHANNEL_ERROR" ||
+            status === "TIMED_OUT" ||
+            status === "CLOSED")
+        ) {
+          setTimeout(() => mounted && setRtKey((k) => k + 1), 3000);
+        }
+      });
     return () => {
       mounted = false;
       supabase.removeChannel(ch);
+    };
+  }, [user, refresh, refreshUrgenze, rtKey]);
+
+  // Rete di sicurezza: ritorno in primo piano / online => ricarica tutto e
+  // riapri il realtime; scheda visibile => polling leggero ogni 20s.
+  useEffect(() => {
+    if (!user) return;
+    const ricarica = () => {
+      refresh();
+      refreshUrgenze();
+    };
+    const risveglio = () => {
+      if (document.visibilityState !== "visible") return;
+      ricarica();
+      setRtKey((k) => k + 1);
+    };
+    const online = () => {
+      ricarica();
+      setRtKey((k) => k + 1);
+    };
+    document.addEventListener("visibilitychange", risveglio);
+    window.addEventListener("online", online);
+    window.addEventListener("focus", risveglio);
+    const poll = setInterval(() => {
+      if (document.visibilityState === "visible") ricarica();
+    }, 20000);
+    return () => {
+      document.removeEventListener("visibilitychange", risveglio);
+      window.removeEventListener("online", online);
+      window.removeEventListener("focus", risveglio);
+      clearInterval(poll);
     };
   }, [user, refresh, refreshUrgenze]);
 
