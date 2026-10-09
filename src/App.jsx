@@ -980,9 +980,21 @@ function ManualViewer({ onClose }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // pdf.js si carica solo quando si apre il manuale (non all'avvio)
+      if (!window.pdfjsLib) {
+        await new Promise((ok, ko) => {
+          const sc = document.createElement("script");
+          sc.src =
+            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+          sc.onload = ok;
+          sc.onerror = ko;
+          document.head.appendChild(sc);
+        }).catch(() => {});
+      }
       const lib = window.pdfjsLib;
       if (!lib || !ref.current) return;
-      lib.GlobalWorkerOptions.workerSrc = window.PDFJS_WORKER_SRC;
+      lib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
       const pdf = await lib.getDocument("/manuale.pdf").promise;
       for (let n = 1; n <= pdf.numPages; n++) {
         if (cancelled) return;
@@ -1898,6 +1910,21 @@ export default function App() {
   const refreshUrgenze = useCallback(async () => {
     setUrgenze(await DB.loadUrgenze());
   }, []);
+  // Foto delle segnalazioni: caricate a parte, in background (la lista parte
+  // subito senza). Prima quelle aperte e recenti, le altre all'apertura.
+  const fotoBusy = useRef(false);
+  const caricaFoto = useCallback(async (ids) => {
+    const loaded = await DB.loadFoto(ids);
+    if (!loaded.length) return;
+    setItems((prev) =>
+      prev.map((it) => {
+        const f = DB.fotoDi(it.id);
+        return f && it.photoBefore === undefined && it.photoAfter === undefined
+          ? { ...it, photoBefore: f.prima, photoAfter: f.dopo }
+          : it;
+      }),
+    );
+  }, []);
   // Riprova a sincronizzare le segnalazioni rimaste in coda locale: ogni 30s
   // e appena torna la connessione. Se qualcosa va a buon fine, aggiorna la
   // lista cosi' il badge "in attesa" sparisce.
@@ -2054,6 +2081,31 @@ export default function App() {
     clearTimeout(swipeAnim.current);
     swipeAnim.current = setTimeout(() => setSwipeDir(null), 300);
   };
+
+  // Precarica in background le foto di segnalazioni aperte o recenti (14 gg)
+  useEffect(() => {
+    if (!user || fotoBusy.current) return;
+    const limite = Date.now() - 14 * 24 * 3600 * 1000;
+    const ids = items
+      .filter(
+        (i) =>
+          i.photoBefore === undefined &&
+          i.photoAfter === undefined &&
+          !i.pendingSync &&
+          (i.status !== "done" || (i.completedAt || i.createdAt) > limite),
+      )
+      .map((i) => i.id);
+    if (!ids.length) return;
+    fotoBusy.current = true;
+    caricaFoto(ids).finally(() => {
+      fotoBusy.current = false;
+    });
+  }, [items, user, caricaFoto]);
+  // Apertura dettaglio/modifica: assicura le foto di quella segnalazione
+  useEffect(() => {
+    const id = sheet?.d?.id || sheet?.edits;
+    if (id) caricaFoto([id]);
+  }, [sheet, caricaFoto]);
 
   // Cambia a ogni ritorno in primo piano / ritorno online: forza la
   // ricreazione del canale realtime (il websocket muore con l'app in background)
@@ -6224,7 +6276,11 @@ function NewForm({ user, onClose, onSave, zones, initial }) {
   const [urg, setUrg] = useState(initial?.urgency || "media");
   const [cat, setCat] = useState(initial?.category || "varie");
   const [notes, setNotes] = useState(initial?.notes || "");
-  const [photo, setPhoto] = useState(initial?.photoBefore || null);
+  const [photo, setPhoto] = useState(initial?.photoBefore);
+  // la foto puo' arrivare dopo l'apertura (caricamento a parte): mostrala
+  useEffect(() => {
+    if (photo === undefined && initial?.photoBefore) setPhoto(initial.photoBefore);
+  }, [initial?.photoBefore]);
   const [busy, setBusy] = useState(false);
   const [roomStatus, setRoomStatus] = useState(initial?.roomStatus || null);
   const [roomStatusSuggerito, setRoomStatusSuggerito] = useState(false);

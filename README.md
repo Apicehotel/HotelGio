@@ -153,6 +153,13 @@ Edge Functions `push-subscribe` (registrazione, tabella `push_subscriptions`) e 
 - Il websocket muore con l'app in background, quindi: il canale viene **ricreato** su `CHANNEL_ERROR` / `TIMED_OUT` / `CLOSED`, al ritorno in primo piano, su focus e su evento online; in piu' c'e' un **polling di riserva ogni 20 s** a scheda visibile (segnalazioni + urgenze).
 - Tabelle in publication realtime: camere_giorno, camere_lavoro, camere_pulite_oggi, interventi, planning_lavori, planning_lavori_giorni, richieste_urgenti, segnalazioni, sensori_temperatura, tecnici.
 
+## 8bis. Prestazioni e caricamento
+- Le **foto delle segnalazioni sono in base64 nella tabella** `segnalazioni` (~16 MB in totale): `DB.loadItems()` NON le scarica (seleziona solo le colonne leggere, ~100 KB). Le foto si caricano a parte con `DB.loadFoto(ids)` a blocchi di 6 e restano in cache in memoria per la sessione: prima in background quelle di segnalazioni aperte o degli ultimi 14 giorni, le altre all'apertura del dettaglio/modifica.
+- **Regola importante:** una segnalazione senza foto caricata ha `photoBefore/photoAfter === undefined`; `itemToRow` in quel caso **omette** `foto_prima/foto_dopo` dall'upsert, cosi' il salvataggio non cancella mai le foto presenti sul database. Mai sostituire `undefined` con `null` nei form di modifica.
+- `xlsx` (file Slope) e `pdf.js` (manuale) si caricano solo quando servono (import dinamico / script iniettato), non all'avvio.
+- Il service worker non mette in cache offline le risposte con foto (`foto_` nella query) e usa cache versionata (`VERSION` in `public/sw.js`: incrementarla quando si cambia la strategia di cache).
+- Idea futura: spostare le foto su Supabase Storage (URL al posto del base64) e comprimerle in upload; ridurrebbe ancora peso e tempi.
+
 ## 9. Database (schema pubblico)
 
 | Tabella | Contenuto |

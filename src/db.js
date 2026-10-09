@@ -32,6 +32,13 @@ function savePendingQueue(q) {
 // L'app usa oggetti "item" (segnalazioni) e "planned" (interventi) con chiavi
 // camelCase. Il DB usa snake_case. Queste funzioni traducono avanti e indietro.
 
+// Foto delle segnalazioni: sono salvate in base64 nella tabella e pesano ~16 MB
+// in totale, quindi NON si scaricano con la lista. Si caricano a parte
+// (loadFoto) e restano in questa cache per tutta la sessione.
+const fotoCache = new Map(); // id -> { prima, dopo }
+const LIGHT_COLS =
+  "id,camera,urgenza,categoria,stato,stato_camera,note,creato_da,creato_il,completato_da,completato_il,pezzo_nome,pezzo_decisione,pezzo_decisione_da,attesa_da,attesa_dal,tecnico_id,tecnico_nome,tecnico_telefono,tecnico_richiesto_da,tecnico_richiesto_il,tecnico_chiamato_da,tecnico_chiamato_il,tecnico_completato,pezzo_sostituito,pezzo_sostituito_da,pezzo_sostituito_il,tecnico_foto_inviata,tecnico_sollecitato_da,tecnico_sollecitato_il,tecnico_msg_sid,tecnico_msg_stato,tecnico_risposta_stato,tecnico_arrivo_testo,tecnico_arrivo_at,tecnico_sollecito_inviato,nota_completamento,tecnico_nota_extra";
+
 function itemFromRow(r) {
   return {
     id: r.id,
@@ -94,8 +101,10 @@ function itemToRow(it) {
     stato: it.status,
     stato_camera: it.roomStatus || null,
     note: it.notes,
-    foto_prima: it.photoBefore || null,
-    foto_dopo: it.photoAfter || null,
+    // undefined = foto non caricata: la chiave viene omessa e l'upsert NON
+    // tocca le foto gia' presenti sul database (mai sovrascrivere con null)
+    ...(it.photoBefore !== undefined && { foto_prima: it.photoBefore || null }),
+    ...(it.photoAfter !== undefined && { foto_dopo: it.photoAfter || null }),
     creato_da: it.createdBy,
     creato_il: it.createdAt
       ? new Date(it.createdAt).toISOString()
@@ -212,15 +221,56 @@ function planToRow(p) {
 // ── API dati (async) ─────────────────────────────────────────────────────────
 export const DB = {
   async loadItems() {
-    const { data, error } = await supabase.from("segnalazioni").select("*");
+    const { data, error } = await supabase
+      .from("segnalazioni")
+      .select(LIGHT_COLS);
     if (error) {
       console.error(error);
       return [];
     }
-    return data.map(itemFromRow);
+    return data.map((r) => {
+      const it = itemFromRow(r);
+      const f = fotoCache.get(r.id);
+      if (f) {
+        it.photoBefore = f.prima;
+        it.photoAfter = f.dopo;
+      }
+      return it;
+    });
+  },
+  // Scarica le foto di alcune segnalazioni (a blocchi piccoli) e le mette in
+  // cache. Ritorna gli id caricati.
+  async loadFoto(ids) {
+    const need = ids.filter((id) => !fotoCache.has(id));
+    const loaded = [];
+    for (let i = 0; i < need.length; i += 6) {
+      const { data, error } = await supabase
+        .from("segnalazioni")
+        .select("id,foto_prima,foto_dopo")
+        .in("id", need.slice(i, i + 6));
+      if (error) {
+        console.error(error);
+        continue;
+      }
+      for (const r of data) {
+        fotoCache.set(r.id, { prima: r.foto_prima, dopo: r.foto_dopo });
+        loaded.push(r.id);
+      }
+    }
+    return loaded;
+  },
+  fotoDi(id) {
+    return fotoCache.get(id);
   },
   async saveItem(it) {
     const row = itemToRow(it);
+    if (it.photoBefore !== undefined || it.photoAfter !== undefined) {
+      const old = fotoCache.get(it.id) || {};
+      fotoCache.set(it.id, {
+        prima: it.photoBefore !== undefined ? it.photoBefore || null : old.prima ?? null,
+        dopo: it.photoAfter !== undefined ? it.photoAfter || null : old.dopo ?? null,
+      });
+    }
     const { error } = await supabase.from("segnalazioni").upsert(row);
     if (error) {
       console.error(error);
