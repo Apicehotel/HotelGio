@@ -2,7 +2,7 @@
 // 1) Notifiche push
 // 2) Cache offline: l'app si apre senza rete e mostra gli ultimi dati scaricati
 
-const VERSION = 'v31';
+const VERSION = 'v32';
 const SHELL_CACHE = `shell-${VERSION}`;   // pagina e file statici dell'app
 const DATA_CACHE  = `data-${VERSION}`;    // ultime risposte lette da Supabase
 
@@ -70,10 +70,12 @@ self.addEventListener('fetch', (event) => {
 
   // B) Dati Supabase: prima la rete, offline gli ultimi dati scaricati
   if (isSupabaseRest(url)) {
+    // le foto (base64, pesanti) non si salvano nella cache offline
+    const pesante = url.search.includes('foto_');
     event.respondWith(
       fetch(req)
         .then((res) => {
-          if (res.ok) {
+          if (res.ok && !pesante) {
             const copy = res.clone();
             caches.open(DATA_CACHE).then((c) => c.put(req, copy));
           }

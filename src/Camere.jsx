@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import * as XLSX from "xlsx";
 import { DB, supabase } from "./db.js";
 import { PIANI as PIANI_ZONE, ROOM_NUMBERS } from "./zoneData.js";
 import { Sheet, Field, ctaSt, inputSt } from "./ui.jsx";
@@ -271,6 +270,7 @@ export function elaboraRighe(rows) {
 }
 
 async function leggiWorkbook(file) {
+  const XLSX = await import("xlsx"); // caricato solo al caricamento del file Slope
   const buf = await file.arrayBuffer();
   const wb = XLSX.read(buf, { type: "array", cellDates: true });
   const sheet = wb.Sheets[wb.SheetNames[0]];
