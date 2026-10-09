@@ -10599,6 +10599,12 @@ function PannelloConsumi({ onClose }) {
 }
 
 
+// Soglia di allerta (°C) di default e soglie specifiche per sensore.
+// Deve restare allineata a sync-sensori-temperatura (edge function).
+const SOGLIA_SENSORI_DEFAULT = 20;
+const SOGLIE_SENSORI = { "10023c84cb": 0 }; // Cella frigo: deve stare sotto 0°C
+const SENSORI_STALE_MS = 60 * 60 * 1000; // dati "vecchi" oltre 1 ora
+
 function SensoriTemperatura({ onClose }) {
   const [sensori, setSensori] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -10700,9 +10706,28 @@ function SensoriTemperatura({ onClose }) {
       </div>
       <div style={{ maxWidth: 600, margin: "0 auto", padding: 16 }}>
         <div style={{ fontSize: 12, color: "#8A9490", marginBottom: 14 }}>
-          Aggiornate automaticamente ogni 15 minuti · account eWeLink dedicato
+          Aggiornate automaticamente ogni 30 minuti · account eWeLink dedicato
           con solo questi sensori condivisi.
         </div>
+        {sensori.some(
+          (s) => Date.now() - new Date(s.aggiornato_il).getTime() > SENSORI_STALE_MS,
+        ) && (
+          <div
+            style={{
+              background: "#FDEAEA",
+              border: "1px solid #C81E1E55",
+              color: "#C81E1E",
+              borderRadius: 10,
+              padding: "10px 12px",
+              fontSize: 12.5,
+              fontWeight: 700,
+              marginBottom: 14,
+            }}
+          >
+            ⚠️ Dati non aggiornati: alcuni sensori non si aggiornano da più di
+            un'ora. I valori mostrati potrebbero non essere attuali.
+          </div>
+        )}
         {loading ? (
           <div style={{ textAlign: "center", padding: 40, color: "#5C645E" }}>
             Carico...
@@ -10714,16 +10739,24 @@ function SensoriTemperatura({ onClose }) {
         ) : (
           sensori.map((s) => {
             const temp = s.temperatura != null ? parseFloat(s.temperatura) : null;
+            const soglia = SOGLIE_SENSORI[s.device_id] ?? SOGLIA_SENSORI_DEFAULT;
+            const agg = new Date(s.aggiornato_il);
+            const vecchio = Date.now() - agg.getTime() > SENSORI_STALE_MS;
+            const oggi = agg.toDateString() === new Date().toDateString();
+            const quando = oggi
+              ? agg.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })
+              : agg.toLocaleString("it-IT", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
             const colore =
-              !s.online
+              !s.online || temp == null || vecchio
                 ? "#8A9490"
-                : temp == null
-                  ? "#8A9490"
-                  : temp < 0
-                    ? "#2563EB"
-                    : s.in_allerta
-                      ? "#C81E1E"
-                      : "#0F6B5C";
+                : s.in_allerta
+                  ? "#C81E1E"
+                  : "#0F6B5C";
             return (
               <div
                 key={s.device_id}
@@ -10746,14 +10779,16 @@ function SensoriTemperatura({ onClose }) {
                   </div>
                   <div style={{ fontSize: 11.5, color: "#8A9490", marginTop: 2 }}>
                     {s.online ? "online" : "⚠️ offline"} · agg.{" "}
-                    {new Date(s.aggiornato_il).toLocaleTimeString("it-IT", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    <span
+                      style={vecchio ? { color: "#C81E1E", fontWeight: 700 } : undefined}
+                    >
+                      {quando}
+                      {vecchio ? " (vecchio)" : ""}
+                    </span>
                     {s.in_allerta && (
                       <span style={{ color: "#C81E1E", fontWeight: 700 }}>
                         {" "}
-                        · sopra i 20°C
+                        · sopra i {soglia}°C
                       </span>
                     )}
                   </div>
