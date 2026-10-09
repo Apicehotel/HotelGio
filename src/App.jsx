@@ -737,6 +737,35 @@ function compress(file) {
     r.readAsDataURL(file);
   });
 }
+// Confronto "per valore" di due liste di oggetti (campi semplici per
+// riferimento, array/oggetti via JSON): le foto sono stringhe in cache,
+// quindi il confronto e' economico.
+function sameList(a, b) {
+  if (a === b) return true;
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length)
+    return false;
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i],
+      y = b[i];
+    const kx = Object.keys(x);
+    if (kx.length !== Object.keys(y).length) return false;
+    for (const k of kx) {
+      const vx = x[k],
+        vy = y[k];
+      if (vx === vy) continue;
+      if (
+        vx &&
+        vy &&
+        typeof vx === "object" &&
+        typeof vy === "object" &&
+        JSON.stringify(vx) === JSON.stringify(vy)
+      )
+        continue;
+      return false;
+    }
+  }
+  return true;
+}
 function sortItems(arr) {
   return [...arr].sort((a, b) => {
     const ord = { todo: 0, tecnico: 1, waiting: 2, done: 3 };
@@ -1805,8 +1834,13 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("segnalazioni"); // "segnalazioni" | "interventi"
   const [filter, setFilter] = useState("aperte");
+  useEffect(() => {
+    setMaxCards(40);
+  }, [filter]);
   const [urgFilter, setUrgFilter] = useState("tutte"); // tutte | attesa | lavorazione | fatte
   const [sheet, setSheet] = useState(null);
+  // quante schede disegnare nella lista (le centinaia di "Fatte" rallentano)
+  const [maxCards, setMaxCards] = useState(40);
   const [viewer, setViewer] = useState(null);
   const [toast, setToast] = useState(null);
   const [pinSheet, setPinSheet] = useState(false);
@@ -1903,9 +1937,17 @@ export default function App() {
     const pending = DB.getPendingItems().filter(
       (p) => !its.some((i) => i.id === p.id),
     );
-    setItems(sortItems([...its, ...pending]));
-    setPlanned(sortPlanned(plans));
-    setTec(tecs);
+    // aggiorna lo stato solo se i dati sono davvero cambiati (evita
+    // ri-render dell'intera app a ogni polling)
+    setItems((prev) => {
+      const n = sortItems([...its, ...pending]);
+      return sameList(prev, n) ? prev : n;
+    });
+    setPlanned((prev) => {
+      const n = sortPlanned(plans);
+      return sameList(prev, n) ? prev : n;
+    });
+    setTec((prev) => (sameList(prev, tecs) ? prev : tecs));
   }, []);
   const refreshUrgenze = useCallback(async () => {
     setUrgenze(await DB.loadUrgenze());
@@ -2175,10 +2217,20 @@ export default function App() {
       refresh();
       refreshUrgenze();
     };
+    let nascostoDal = 0;
+    let ultimo = 0;
     const risveglio = () => {
-      if (document.visibilityState !== "visible") return;
+      if (document.visibilityState === "hidden") {
+        nascostoDal = Date.now();
+        return;
+      }
+      const ora = Date.now();
+      if (ora - ultimo < 3000) return; // visibilitychange + focus insieme
+      ultimo = ora;
       ricarica();
-      setRtKey((k) => k + 1);
+      // riapri il realtime solo se l'app e' stata in background a lungo
+      if (nascostoDal && ora - nascostoDal > 30000) setRtKey((k) => k + 1);
+      nascostoDal = 0;
     };
     const online = () => {
       ricarica();
@@ -2186,14 +2238,12 @@ export default function App() {
     };
     document.addEventListener("visibilitychange", risveglio);
     window.addEventListener("online", online);
-    window.addEventListener("focus", risveglio);
     const poll = setInterval(() => {
       if (document.visibilityState === "visible") ricarica();
     }, 20000);
     return () => {
       document.removeEventListener("visibilitychange", risveglio);
       window.removeEventListener("online", online);
-      window.removeEventListener("focus", risveglio);
       clearInterval(poll);
     };
   }, [user, refresh, refreshUrgenze]);
@@ -2208,14 +2258,6 @@ export default function App() {
       window.removeEventListener("offline", off);
     };
   }, []);
-
-  useEffect(() => {
-    const fn = () => {
-      if (document.visibilityState === "visible") refresh();
-    };
-    document.addEventListener("visibilitychange", fn);
-    return () => document.removeEventListener("visibilitychange", fn);
-  }, [refresh]);
 
   useEffect(() => {
     let lastTouch = 0;
@@ -3192,7 +3234,7 @@ export default function App() {
             </div>
           ) : (
             <>
-              {sortedFil.map((it) => (
+              {sortedFil.slice(0, maxCards).map((it) => (
                 <Card
                   key={it.id}
                   it={it}
@@ -3200,6 +3242,25 @@ export default function App() {
                   onPhoto={setViewer}
                 />
               ))}
+              {sortedFil.length > maxCards && (
+                <button
+                  onClick={() => setMaxCards((n) => n + 40)}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    margin: "4px 0 10px",
+                    borderRadius: 12,
+                    border: "1px solid #E4E0D6",
+                    background: "#fff",
+                    color: "#0E5C49",
+                    fontWeight: 700,
+                    fontSize: 14,
+                    cursor: "pointer",
+                  }}
+                >
+                  Mostra altre ({sortedFil.length - maxCards})
+                </button>
+              )}
               {filter === "fatte" && vedeInterventi && filteredDonePlanned.length > 0 && (
                 <>
                   <div
@@ -4580,6 +4641,8 @@ function Card({ it, onOpen, onPhoto }) {
                 <img
                   src={it.photoBefore}
                   alt=""
+                  loading="lazy"
+                  decoding="async"
                   onClick={() => onPhoto(it.photoBefore)}
                   style={{
                     width: 56,
@@ -4607,6 +4670,8 @@ function Card({ it, onOpen, onPhoto }) {
                 <img
                   src={it.photoAfter}
                   alt=""
+                  loading="lazy"
+                  decoding="async"
                   onClick={() => onPhoto(it.photoAfter)}
                   style={{
                     width: 56,
