@@ -64,3 +64,27 @@ URL produzione: https://apice-project.vercel.app
   protetti da password.
 - Tracciamento importi/date fatture: tool dedicato (registro-costi.html,
   consegnato all'utente, salvato nel suo account Claude).
+
+## Sensori temperatura (aggiornato 09/10/2026)
+- Edge function `sync-sensori-temperatura` (cron `*/30`): legge eWeLink con **paginazione** (API max 30 dispositivi/pagina, account con 43) e salva su `sensori_temperatura`.
+- 9 sensori in whitelist (Jazz P1-P4, W Alb 1-3, risto Wine, Cella frigo). Soglia allerta default 20°C; Cella frigo 0°C (`SOGLIE_SENSORI` in App.jsx e nella function).
+- UI: grigio = offline/dato vecchio (>1h, banner "Dati non aggiornati"), rosso = in allerta, verde = ok.
+- Da fare: credenziali eWeLink ancora nel sorgente della function (spostare nei secrets Supabase); nessun avviso quando un sensore va offline.
+
+## Urgenze e WhatsApp (aggiornato 09/10/2026)
+- Tabella `richieste_urgenti`; trigger `invia_whatsapp_urgenza_evento()` chiama la edge function `send-urgenza-whatsapp` (Twilio, template `richiesta_urgente_manutenzione_v2`).
+- Destinatari: solo manutentori con `in_struttura=true` e telefono valorizzato **in formato internazionale (+39...)**: senza prefisso Twilio risponde 63024.
+- Solleciti: messaggio alla creazione + promemoria a +1, +2, +3 minuti dalla creazione, solo se la richiesta e' ancora `aperta` e non presa in carico. Cron pg_cron `solleciti-whatsapp-urgenze` ogni 15 secondi, funzione `invia_solleciti_urgenze()`, contatore `whatsapp_solleciti`. Testato il 09/10/2026 (4 messaggi consegnati).
+- `whatsapp_inviato=true` significa "accettato da Twilio", non "consegnato": per lo stato reale usare `send-urgenza-whatsapp?checkSid=<MM...>`.
+
+## Presenza "in struttura"
+- Colonne su `utenti`: `in_struttura`, `in_struttura_dal`, `in_struttura_via` (manuale | gps | auto_7h20 | auto_gps_7h20).
+- Timeout 7h20: manuale = timer client + job pg_cron per utente; GPS = cron `spegni-presenza-gps-scaduta` ogni 15 min. Il GPS aggiorna solo con app aperta e non sovrascrive "manuale".
+
+## Realtime e aggiornamento dati (aggiornato 09/10/2026)
+- In App.jsx il canale `apice-changes` viene ricreato su CHANNEL_ERROR/TIMED_OUT/CLOSED, al ritorno in primo piano, su focus e su evento online; in piu' polling di riserva ogni 20s a scheda visibile (segnalazioni + urgenze). Motivo: il websocket muore con l'app in background.
+
+## Deploy — attenzione
+- Produzione: https://hotelgio.vercel.app (progetto Vercel `hotelgio`, team `apicehotel`).
+- Il 09/10/2026 si e' scoperto che Vercel non ricostruiva dal 09/09 nonostante i merge su `main`: verificare sempre che compaia un deploy "Ready" dopo il push (Vercel > Deployments); in caso contrario ridistribuire a mano il commit di `main` e controllare Settings > Git.
+- Build locale: `npm install` fallisce in ambienti senza accesso a cdn.sheetjs.com (dipendenza `xlsx`).
